@@ -35,6 +35,7 @@ Status: proposta | aceita | substituída por NNNN
 
 ## Estado atual
 
-- `regras-de-negocio.md` — criado (etapa 1).
+- `regras-de-negocio.md` — criado (etapa 1), atualizado (etapa 2).
 - `decisoes/0001-organizacao-do-repositorio-e-documentacao.md` — criado (etapa 0/1).
+- `decisoes/0002-agente-de-ia-para-redacao-de-emails.md` — criado (etapa 2).
 - `api/` e `modelagem/` — ainda vazios, serão populados quando o backend (RF-01 em diante) começar a ser implementado.

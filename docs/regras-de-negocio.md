@@ -67,10 +67,11 @@ explicitamente.
 - **RN-25** — Todo e-mail enviado pelo sistema deve ficar registrado com histórico auditável — quem enviou, para quem, quando, conteúdo (RF-04 + RNF-04).
 - ⚠️ **RN-26** — A caixa de e-mail institucional que o sistema vai usar para enviar/receber ainda não foi definida. Bloqueia a implementação real do envio (hoje só é possível desenhar a funcionalidade, não configurar o remetente definitivo).
 - **RN-27** — WhatsApp permanece fora do sistema — não há e não haverá integração automática nesta fase. A intenção do negócio é migrar o contato recorrente para e-mail (que gera histórico), mas o primeiro contato via WhatsApp continua acontecendo fora do sistema.
+- **RN-28** — A redação de e-mails (individuais e em massa) é assistida por um agente de IA: o agente gera o rascunho do texto (ex.: cobrança de débito, aviso de vencimento de vigência, boas-vindas a novo afiliado), mas **nenhum e-mail é enviado sem revisão e confirmação explícita de alguém da equipe do programa**. O agente nunca envia diretamente. Ver [`decisoes/0002-agente-de-ia-para-redacao-de-emails.md`](./decisoes/0002-agente-de-ia-para-redacao-de-emails.md) para o porquê de e-mail ter sido escolhido como primeira tarefa com IA, em vez de contrato (RF-03) ou documentos (RF-05).
 
 ## 9. Escala
 
-- **RN-28** — O sistema precisa suportar hoje ~22 afiliados fechados e ~23–30 em processo, com projeção de ~50 até o fim do ano e ~60 no ano seguinte (RNF-03). Não é um volume que exige otimizações de performance antecipadas — é baixo — mas a modelagem não deve assumir "poucos registros para sempre".
+- **RN-29** — O sistema precisa suportar hoje ~22 afiliados fechados e ~23–30 em processo, com projeção de ~50 até o fim do ano e ~60 no ano seguinte (RNF-03). Não é um volume que exige otimizações de performance antecipadas — é baixo — mas a modelagem não deve assumir "poucos registros para sempre".
 
 ## Glossário
 
