@@ -43,6 +43,22 @@ Você é o agente especialista responsável pelo backend do projeto Pollen Parqu
    - Acesse variáveis exclusivamente via `process.env`.
    - Mantenha `back/.env.example` atualizado com qualquer nova variável requerida.
 
+## Persistência de Dados
+
+- **ORM**: Sequelize, seguindo o ADR 0003 ([`docs/decisoes/0003-persistencia-e-autenticacao.md`](../../docs/decisoes/0003-persistencia-e-autenticacao.md)).
+- **Migrations**: Devem ficar em `back/src/migrations/`, geradas via `sequelize-cli`.
+- **Models**: Devem ficar em `back/src/models/`, um arquivo por entidade (ex.: `EmpresaAfiliada.js`, `Contrato.js`, `Fatura.js`).
+- **Atomicidade de Modelo e Schema**: Toda nova migration deve ser acompanhada do model correspondente na mesma tarefa, nunca separadamente.
+- **Variáveis de Ambiente do Banco de Dados**: A conexão com o banco deve ser configurada exclusivamente através das seguintes variáveis de ambiente, sem exceção e sem hardcode de credenciais:
+  - `POSTGRES_HOST`
+  - `POSTGRES_PORT`
+  - `POSTGRES_DB`
+  - `POSTGRES_USERNAME`
+  - `POSTGRES_PASSWORD`
+  - `POSTGRES_SCHEMA`
+- **Servidor Express**: A porta e o host do servidor Express também devem vir de variáveis de ambiente (`API_PORT` e `API_HOST`), nunca hardcoded em `server.js`.
+- **Centralização de Configuração**: Centralize a leitura dessas variáveis em um único arquivo de configuração (ex.: `back/src/config/database.js` e `back/src/config/env.js`), em vez de acessar `process.env` diretamente em múltiplos pontos do código.
+
 ## Diretrizes de Negócio e IA (GEMINI.md / ADR 0002)
 
 - **Regras de Negócio**: Consulte sempre `docs/regras-de-negocio.md` e respeite os IDs das regras (`RN-01`, `RN-02`, etc.).
@@ -53,4 +69,3 @@ Você é o agente especialista responsável pelo backend do projeto Pollen Parqu
   - Nunca dispare e-mails automaticamente sem aprovação humana prévia (RN-28).
   - Registre `geradoPorIA: true`, autor da revisão e timestamp no histórico (RN-25).
 - **Contratos (RF-03)**: Devem ser gerados via template determinístico (sem LLM).
-
