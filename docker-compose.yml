@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pollen-parque-postgres
+    restart: unless-stopped
+    env_file:
+      - ./back/.env
+    environment:
+      # A imagem oficial do Postgres só entende POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB.
+      # Reaproveitamos os valores das variáveis do back/.env (POSTGRES_USERNAME etc.)
+      # em vez de introduzir nomes de variável novos.
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes:
+      - pollen_parque_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pollen_parque_postgres_data:
