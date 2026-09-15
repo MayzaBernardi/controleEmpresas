@@ -10,6 +10,7 @@ Este arquivo define as regras de desenvolvimento que o assistente de IA deve seg
   - Respeite os IDs das regras (`RN-01`, `RN-02`, etc.) ao documentar ou referenciar regras no código.
   - **Atenção aos alertas ⚠️**: Itens marcados com ⚠️ na seção "Pendências abertas" de `docs/regras-de-negocio.md` **não devem ser implementados** até confirmação explícita do time de negócio.
 - **Decisões Técnicas e Arquiteturais (ADRs)**: Estão em `docs/decisoes/`. Toda nova decisão estrutural deve ser registrada como um novo ADR sequencial (`NNNN-titulo.md`) seguindo a convenção em `docs/README.md`.
+  - **Persistência e Autenticação**: Definidas no [ADR 0003](docs/decisoes/0003-persistencia-e-autenticacao.md) como fonte da verdade (PostgreSQL, Sequelize e Auth.js para login institucional SSO e perfis RN-01).
 - **Changelog de Etapas**: Ao concluir qualquer etapa de desenvolvimento, atualize o arquivo `docs/CHANGELOG.md` referenciando os documentos e entregas correspondentes.
 - **APIs e Modelagem**: Endpoints devem ser documentados em `docs/api/<modulo>.md` e schemas em `docs/modelagem/<entidade>.md`.
 
@@ -49,4 +50,6 @@ Este arquivo define as regras de desenvolvimento que o assistente de IA deve seg
   - Indicar visualmente que o rascunho inicial foi sugerido por IA.
 - **Atores e Perfis de Acesso**:
   - Respeitar a segmentação por perfis (RN-01): Equipe do programa, Empresa afiliada e Contabilidade/Financeiro.
+  - Autenticação e gestão de sessão implementadas via Auth.js conforme [ADR 0003](docs/decisoes/0003-persistencia-e-autenticacao.md).
+
 

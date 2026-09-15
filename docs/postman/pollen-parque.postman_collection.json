@@ -1,0 +1,2337 @@
+{
+  "info": {
+    "_postman_id": "pollen-parque-api",
+    "name": "Pollen Parque — API (protótipo)",
+    "description": "Collection de testes manuais da API do Pollen Parque. Rode primeiro as 3 requisições da pasta \"0. Auth (dev)\" para obter tokens (salvos automaticamente em variáveis da collection: tokenEquipePrograma, tokenContabilidade, tokenEmpresaAfiliada) — os endpoints \"dev-login\" NÃO existem em produção (guardados por NODE_ENV), são um atalho de teste enquanto o Auth.js real não está implementado no front/ (ver docs/decisoes/0003 e comentário em back/src/middlewares/authMiddleware.js). Rode \"Empresas > Listar empresas\" e \"Contratos > Listar contratos\" pelo menos uma vez antes dos demais módulos: eles capturam automaticamente empresaId/contratoId nas variáveis da collection, usados como exemplo nas demais rotas com :id.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "tokenEquipePrograma",
+      "value": ""
+    },
+    {
+      "key": "tokenContabilidade",
+      "value": ""
+    },
+    {
+      "key": "tokenEmpresaAfiliada",
+      "value": ""
+    },
+    {
+      "key": "empresaId",
+      "value": ""
+    },
+    {
+      "key": "empresaIdOutraEmpresa",
+      "value": ""
+    },
+    {
+      "key": "contratoId",
+      "value": ""
+    },
+    {
+      "key": "contratoComAssinaturasId",
+      "value": ""
+    },
+    {
+      "key": "documentoId",
+      "value": ""
+    },
+    {
+      "key": "financeiroLancamentoId",
+      "value": ""
+    },
+    {
+      "key": "prospeccaoId",
+      "value": ""
+    },
+    {
+      "key": "formularioRespostaId",
+      "value": ""
+    },
+    {
+      "key": "assinaturaId",
+      "value": ""
+    },
+    {
+      "key": "planoId",
+      "value": ""
+    },
+    {
+      "key": "reservaEspacoId",
+      "value": ""
+    },
+    {
+      "key": "comunicacaoEmailId",
+      "value": ""
+    },
+    {
+      "key": "usuarioId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "0. Auth (dev)",
+      "item": [
+        {
+          "name": "Login como Equipe do Programa (Ana Ribeiro)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev-login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev-login"
+              ]
+            },
+            "description": "Atalho de dev/teste (não existe em produção) — emite token para um usuário já seedado. Substitui o login real via Auth.js/SSO institucional, ainda não implementado no front/.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.ribeiro@pollenparque.org.br\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"tokenEquipePrograma\", json.token);",
+                  "pm.test(\"token recebido\", () => pm.expect(json.token).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como Contabilidade (Carla Souza)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev-login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev-login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carla.souza@pollenparque.org.br\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"tokenContabilidade\", json.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como Empresa Afiliada (Alfa Biotecnologia)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev-login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev-login"
+              ]
+            },
+            "description": "Usuário empresa_afiliada vinculado à empresa \"Alfa Biotecnologia Ltda\" (dado de seed).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"financeiro@alfa.com.br\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"tokenEmpresaAfiliada\", json.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Obtenha tokens de teste antes de rodar as demais pastas. Guardado atrás de NODE_ENV !== production."
+    },
+    {
+      "name": "1. Empresas",
+      "item": [
+        {
+          "name": "Listar empresas (equipe_programa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) {",
+                  "  pm.collectionVariables.set(\"empresaId\", json[0].id);",
+                  "  if (json.length > 1) pm.collectionVariables.set(\"empresaIdOutraEmpresa\", json[1].id);",
+                  "}",
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar empresas (contabilidade)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenContabilidade}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Minha empresa (empresa_afiliada — GET /empresas/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas",
+                "me"
+              ]
+            },
+            "description": "Autoatendimento: não depende de :id na URL (evita o padrão IDOR já corrigido nesta base)."
+          }
+        },
+        {
+          "name": "Detalhar empresa por ID (equipe_programa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas/{{empresaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas",
+                "{{empresaId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "[RBAC] empresa_afiliada tentando listar todas as empresas -> 403 esperado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar empresa (equipe_programa)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas"
+              ]
+            },
+            "description": "RN-32: nacional exige cnpj com 14 dígitos; internacional exige identificador_estrangeiro em vez de cnpj. cnpj gerado aleatoriamente no pre-request script (é UNIQUE no banco).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razao_social\": \"Nova Empresa Teste Postman Ltda\",\n  \"tipo_empresa\": \"nacional\",\n  \"cnpj\": \"{{cnpjAleatorio}}\",\n  \"contatos\": {\n    \"email\": \"contato@novaempresateste.com.br\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let cnpj = \"\";",
+                  "for (let i = 0; i < 14; i++) cnpj += Math.floor(Math.random() * 10);",
+                  "pm.variables.set(\"cnpjAleatorio\", cnpj);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[RN-32] Criar empresa nacional sem CNPJ -> 400 esperado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razao_social\": \"Empresa Inválida Ltda\",\n  \"tipo_empresa\": \"nacional\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar empresa",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas/{{empresaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas",
+                "{{empresaId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome_fantasia\": \"Nome Fantasia Atualizado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Atualizar status_processo da empresa (funil ADR 0005)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas/{{empresaId}}/status-processo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas",
+                "{{empresaId}}",
+                "status-processo"
+              ]
+            },
+            "description": "Ver docs/modelagem/status-processo.md para os 8 códigos/ordens do funil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status_processo_id\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "2. Formulário de Inscrição",
+      "item": [
+        {
+          "name": "Submeter formulário (PÚBLICO — sem token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/formulario-respostas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "formulario-respostas"
+              ]
+            },
+            "description": "RN-04: rota pública, ponto de entrada antes de existir usuário. RN-36: vincula prospecção em aberto correspondente, se houver.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email_contato\": \"contato@empresateste.com.br\",\n  \"payload_respostas\": {\n    \"razao_social\": \"Empresa Teste Postman Ltda\",\n    \"interesse\": \"edital 2026\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"formularioRespostaId\", json.id);",
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar formulários (equipe_programa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/formulario-respostas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "formulario-respostas"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Detalhar formulário",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/formulario-respostas/{{formularioRespostaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "formulario-respostas",
+                "{{formularioRespostaId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Triar formulário",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/formulario-respostas/{{formularioRespostaId}}/triagem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "formulario-respostas",
+                "{{formularioRespostaId}}",
+                "triagem"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status_triagem\": \"triado\",\n  \"observacoes_triagem\": \"Cadastro criado a partir da submissão.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "3. Prospecção",
+      "item": [
+        {
+          "name": "Listar prospecções",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prospeccoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prospeccoes"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Criar prospecção",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prospeccoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prospeccoes"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome_empresa\": \"Prospect Teste Postman Ltda\",\n  \"cidade\": \"Campinas\",\n  \"uf\": \"SP\",\n  \"email_contato\": \"contato@prospectteste.com.br\",\n  \"responsavel_interno\": \"Ana Ribeiro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"prospeccaoId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar prospecção (ex.: descartar)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/prospeccoes/{{prospeccaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prospeccoes",
+                "{{prospeccaoId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacoes\": \"Contato retomado.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "4. Contratos",
+      "item": [
+        {
+          "name": "Listar contratos (equipe_programa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos"
+              ]
+            },
+            "description": "Captura contratoId (1º contrato, só para leitura abaixo) e contratoComAssinaturasId (um contrato com numero_termo preenchido — logo, com as 5 assinaturas seedadas — usado pela pasta 5. Assinaturas)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) {",
+                  "  pm.collectionVariables.set(\"contratoId\", json[0].id);",
+                  "  const comAssinaturas = json.find((c) => c.numero_termo);",
+                  "  if (comAssinaturas) pm.collectionVariables.set(\"contratoComAssinaturasId\", comAssinaturas.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar contratos (empresa_afiliada — só os próprios, RN-33)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Contratos com renovação pendente (RN-30, calculado em leitura)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos/renovacao-pendente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos",
+                "renovacao-pendente"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Detalhar contrato (leitura — usa um contrato de seed)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos",
+                "{{contratoId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "[RN-33] empresa_afiliada tentando ler contrato de outra empresa -> 404 esperado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos",
+                "{{contratoId}}"
+              ]
+            },
+            "description": "Use um contratoId que NÃO pertença à Alfa Biotecnologia para este teste ser significativo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 (isolamento, nunca 403)\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gerar contrato (RF-03 — template determinístico)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos"
+              ]
+            },
+            "description": "A partir daqui, contratoId passa a apontar para ESTE contrato recém-criado (não mais um de seed) — as próximas 2 requisições (atualizar/renovar) mexem só nele, nunca em dado de seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresaId}}\",\n  \"data_inicio_vigencia\": \"2026-10-01\",\n  \"data_termino_vigencia\": \"2027-09-30\",\n  \"valor_anuidade\": \"1200.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"contratoId\", json.id);",
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar contrato (isenção de taxa, RN-34)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos",
+                "{{contratoId}}"
+              ]
+            },
+            "description": "RN-34: isento_taxa=true sem motivo_isencao/documento_referencia retorna 400 (tente remover os dois campos do body para ver o erro).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isento_taxa\": true,\n  \"motivo_isencao\": \"Convênio institucional\",\n  \"documento_referencia\": \"DISTRATO 129/2023-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Renovar contrato (RF-07)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos/{{contratoId}}/renovar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos",
+                "{{contratoId}}",
+                "renovar"
+              ]
+            },
+            "description": "Cria um novo contrato com contrato_anterior_id apontando para o atual; datas encadeadas por padrão.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "5. Assinaturas",
+      "item": [
+        {
+          "name": "Listar assinaturas de um contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contratos/{{contratoComAssinaturasId}}/assinaturas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contratos",
+                "{{contratoComAssinaturasId}}",
+                "assinaturas"
+              ]
+            },
+            "description": "Usa contratoComAssinaturasId (capturado na pasta 4 — um contrato com numero_termo preenchido, logo com as 5 assinaturas seedadas), não contratoId (que pode já ser o contrato novo criado na pasta 4, sem assinaturas)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) pm.collectionVariables.set(\"assinaturaId\", json[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar assinatura (registrar retorno da Procuradoria, RN-10)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assinaturas/{{assinaturaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assinaturas",
+                "{{assinaturaId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"assinado\",\n  \"data_assinatura\": \"2026-09-15T12:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "6. Documentos",
+      "item": [
+        {
+          "name": "Listar documentos (equipe_programa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/documentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) pm.collectionVariables.set(\"documentoId\", json[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar documentos (empresa_afiliada — só os próprios)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/documentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Upload de documento (empresa_afiliada — para a própria empresa)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/documentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos"
+              ]
+            },
+            "description": "empresa_id é sempre forçado a partir do token (req.user.empresaId) — nunca aceito do body, mesmo se enviado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_documento\": \"comprovante_endereco\",\n  \"nome_arquivo\": \"comprovante.pdf\",\n  \"url_arquivo\": \"https://storage.pollenparque.org.br/teste/comprovante.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Upload de documento (equipe_programa — em nome de qualquer empresa)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/documentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresaId}}\",\n  \"tipo_documento\": \"estatuto_social\",\n  \"nome_arquivo\": \"estatuto.pdf\",\n  \"url_arquivo\": \"https://storage.pollenparque.org.br/teste/estatuto.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Avaliar documento (aprovar/rejeitar)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/documentos/{{documentoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos",
+                "{{documentoId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"aprovado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "7. Financeiro",
+      "item": [
+        {
+          "name": "Listar lançamentos (contabilidade)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenContabilidade}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro-lancamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financeiro-lancamentos"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) pm.collectionVariables.set(\"financeiroLancamentoId\", json[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar lançamentos (empresa_afiliada — só os próprios, RN-19)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro-lancamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financeiro-lancamentos"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Lançamentos atrasados (RN-31, calculado em leitura)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenContabilidade}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro-lancamentos/atrasados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financeiro-lancamentos",
+                "atrasados"
+              ]
+            },
+            "description": "No seed: \"Latitude Robótica Ltda\" e \"Solstício Nanotecnologia Ltda\" devem aparecer."
+          }
+        },
+        {
+          "name": "[RBAC] equipe_programa tentando lançar boleto -> 403 esperado (RN-16, só contabilidade)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro-lancamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financeiro-lancamentos"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresaId}}\",\n  \"valor\": \"1200.00\",\n  \"data_vencimento\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lançar boleto/NF (contabilidade)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenContabilidade}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro-lancamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financeiro-lancamentos"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"empresa_id\": \"{{empresaId}}\",\n  \"numero_documento\": \"BOL-TESTE-001\",\n  \"valor\": \"1200.00\",\n  \"forma_pagamento\": \"boleto\",\n  \"data_vencimento\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Confirmar pagamento (contabilidade)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenContabilidade}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro-lancamentos/{{financeiroLancamentoId}}/pagamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "financeiro-lancamentos",
+                "{{financeiroLancamentoId}}",
+                "pagamento"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_pagamento\": \"2026-10-28\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "8. Planos de Afiliação",
+      "item": [
+        {
+          "name": "Listar planos (catálogo — qualquer perfil autenticado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/planos-afiliacao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "planos-afiliacao"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) pm.collectionVariables.set(\"planoId\", json[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar plano (equipe_programa)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/planos-afiliacao/{{planoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "planos-afiliacao",
+                "{{planoId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ativo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "9. Espaços Físicos e Reservas",
+      "item": [
+        {
+          "name": "Listar espaços físicos (legado, ocupação fixa)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/espacos-fisicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacos-fisicos"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Listar reservas de espaço",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas-espaco",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas-espaco"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Criar reserva de espaço (empresa_afiliada — para si própria, coworking)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas-espaco",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas-espaco"
+              ]
+            },
+            "description": "empresaId é sempre forçado a partir do token — mesmo se você mandar empresa_id no body, é ignorado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_espaco\": \"coworking\",\n  \"data_reserva\": \"2026-11-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.id) pm.collectionVariables.set(\"reservaEspacoId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[RN-35] 1/2 — Criar reserva de sala_atico (1ª do ano, deve ser 201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas-espaco",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas-espaco"
+              ]
+            },
+            "description": "sala_atico tem limite de 1x/ano (RN-35). Numa collection já rodada antes contra o mesmo banco, este 201 pode virar 400 (o limite já foi atingido numa execução anterior) — é o comportamento correto da regra persistindo entre execuções, não um bug.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_espaco\": \"sala_atico\",\n  \"data_reserva\": \"2026-12-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created (ou 400 se já rodou antes)\", () => pm.expect([201, 400]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[RN-35] 2/2 — Criar OUTRA reserva de sala_atico no mesmo ano -> 400 esperado sempre",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEmpresaAfiliada}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas-espaco",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas-espaco"
+              ]
+            },
+            "description": "Esta sempre deve dar 400 nesta mesma execução da collection, já que a requisição anterior (1/2) acabou de consumir a única vaga do ano.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_espaco\": \"sala_atico\",\n  \"data_reserva\": \"2026-12-20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request (limite anual RN-35)\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar status da reserva (equipe_programa)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservas-espaco/{{reservaEspacoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas-espaco",
+                "{{reservaEspacoId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "10. Benefícios de Exposição",
+      "item": [
+        {
+          "name": "Ver benefícios de exposição de uma empresa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas/{{empresaId}}/beneficios-exposicao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas",
+                "{{empresaId}}",
+                "beneficios-exposicao"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Atualizar benefícios de exposição (upsert)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/empresas/{{empresaId}}/beneficios-exposicao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "empresas",
+                "{{empresaId}}",
+                "beneficios-exposicao"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telao_ativo\": true,\n  \"marca_site_ativo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "11. Comunicações / E-mail",
+      "item": [
+        {
+          "name": "Criar rascunho de e-mail (RF-04 / RN-28)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email/rascunho",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email",
+                "rascunho"
+              ]
+            },
+            "description": "gerado_por_ia é sempre marcado true; a integração real com @google/genai ainda não existe (emailAgentService.js vazio) — aqui o corpo já vem pronto no request, simulando o rascunho.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assunto\": \"Boas-vindas ao Pollen Parque\",\n  \"corpo_html\": \"<p>Olá! Seja bem-vindo(a) ao programa de afiliados.</p>\",\n  \"observacoes_ia\": \"Rascunho gerado a partir do template de boas-vindas.\",\n  \"empresaIds\": [\n    \"{{empresaId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set(\"comunicacaoEmailId\", json.id);",
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar comunicações",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Editar rascunho",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email/{{comunicacaoEmailId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email",
+                "{{comunicacaoEmailId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"corpo_html\": \"<p>Olá! Seja muito bem-vindo(a) ao Pollen Parque.</p>\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[RN-28] Tentar enviar ANTES de aprovar -> 400 esperado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email/{{comunicacaoEmailId}}/enviar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email",
+                "{{comunicacaoEmailId}}",
+                "enviar"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aprovar e-mail (revisão humana obrigatória, RN-28)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email/{{comunicacaoEmailId}}/aprovar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email",
+                "{{comunicacaoEmailId}}",
+                "aprovar"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Enviar e-mail (só após aprovado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email/{{comunicacaoEmailId}}/enviar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email",
+                "{{comunicacaoEmailId}}",
+                "enviar"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "12. Auditoria",
+      "item": [
+        {
+          "name": "Listar log de auditoria",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/log-auditoria",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "log-auditoria"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Filtrar log de auditoria por entidade",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/log-auditoria?entidade=contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "log-auditoria?entidade=contratos"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "13. Usuários",
+      "item": [
+        {
+          "name": "Listar usuários",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json) && json.length > 0) pm.collectionVariables.set(\"usuarioId\", json[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar usuário",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuarioId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ativo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": ""
+    }
+  ]
+}

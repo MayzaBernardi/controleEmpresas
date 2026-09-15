@@ -13,11 +13,11 @@ explicitamente.
 
 ## 1. Atores
 
-| Ator | O que pode fazer |
-|---|---|
-| Equipe do programa | Cadastra e gerencia empresas afiliadas, gera contratos, dispara comunicação, acompanha o processo ponta a ponta. |
-| Empresa afiliada | Consulta seus próprios débitos e status; envia documentos exigidos. Não vê dados de outras empresas. |
-| Contabilidade/Financeiro | Lança NF e boleto, confirma pagamentos. Só mexe na parte financeira — não edita cadastro nem contrato. |
+| Ator                     | O que pode fazer                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Equipe do programa       | Cadastra e gerencia empresas afiliadas, gera contratos, dispara comunicação, acompanha o processo ponta a ponta. |
+| Empresa afiliada         | Consulta seus próprios débitos e status; envia documentos exigidos. Não vê dados de outras empresas.             |
+| Contabilidade/Financeiro | Lança NF e boleto, confirma pagamentos. Só mexe na parte financeira — não edita cadastro nem contrato.           |
 
 - **RN-01** — Todo acesso ao sistema é segmentado por ator (RF-08): cada perfil só enxerga e edita o que é da sua responsabilidade. Uma empresa afiliada nunca vê dados de outra empresa.
 - **RN-02** — O login é institucional (SSO), sem senha própria do sistema (RNF-01).
@@ -27,7 +27,7 @@ explicitamente.
 - **RN-03** — O contato inicial de uma empresa interessada normalmente acontece por WhatsApp (envio de material/edital), mas isso **não é registrado no sistema** — o WhatsApp não é integrável e fica fora do fluxo digital.
 - **RN-04** — O processo de afiliação só é considerado formalmente iniciado quando a empresa preenche o formulário de cadastro próprio do sistema, que grava direto no banco (RF-01), substituindo o formulário externo + planilha atual.
 - **RN-05** — Uma empresa cadastrada deve poder ser listada e consultada pela equipe do programa a qualquer momento (RF-02).
-- ⚠️ **RN-06** — Uma empresa pode existir no sistema em estados como: *cadastro iniciado*, *aguardando contrato/assinatura*, *ativa*, *inadimplente*, *em renovação*, *encerrada*. (Os nomes e transições exatas dos estados ainda não foram confirmados com o negócio — usar como rascunho até validar.)
+- ⚠️ **RN-06** — Uma empresa pode existir no sistema em estados como: _cadastro iniciado_, _aguardando contrato/assinatura_, _ativa_, _inadimplente_, _em renovação_, _encerrada_. (Os nomes e transições exatas dos estados ainda não foram confirmados com o negócio — usar como rascunho até validar.)
 
 ## 3. Contrato e assinatura
 
@@ -75,13 +75,33 @@ explicitamente.
 
 ## Glossário
 
-| Termo | Significado |
-|---|---|
-| Afiliado / empresa afiliada | Empresa que paga anuidade para ocupar espaço físico no Pollen Parque. |
-| Minuta | Modelo de contrato padrão, com campos variáveis a preencher por empresa. |
-| NIT01 | Caixa de e-mail institucional hoje usada para troca de documentos com empresas. |
-| Procuradoria Jurídica | Setor externo responsável por coletar as assinaturas formais do contrato; fluxo mantido fora do sistema. |
-| Vigência | Período em que a afiliação está válida (hoje, anual). |
+| Termo                       | Significado                                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Afiliado / empresa afiliada | Empresa que paga anuidade para ocupar espaço físico no Pollen Parque.                                    |
+| Minuta                      | Modelo de contrato padrão, com campos variáveis a preencher por empresa.                                 |
+| NIT01                       | Caixa de e-mail institucional hoje usada para troca de documentos com empresas.                          |
+| Procuradoria Jurídica       | Setor externo responsável por coletar as assinaturas formais do contrato; fluxo mantido fora do sistema. |
+| Vigência                    | Período em que a afiliação está válida (hoje, anual).                                                    |
+
+## 10. Dados, persistência e acesso
+
+- **RN-30** — O status de um contrato em relação ao vencimento é calculado em tempo de leitura pelo serviço (`ContratosService`), comparando `data_termino_vigencia` com a data atual, sem alterar o banco de dados nem usar hooks de ORM. A coluna `status_contrato_id` no banco representa o estado formal registrado pela equipe; o estado derivado (renovação pendente, encerrado por vencimento) é exposto apenas na resposta da API.
+  - Status "renovação pendente": `data_termino_vigencia` ≤ (hoje + 60 dias) e status formal ainda "vigente".
+  - Status "encerrado por vencimento": `data_termino_vigencia` < hoje e sem contrato subsequente vigente vinculado.
+
+- **RN-31** — O status de inadimplência de um lançamento financeiro é calculado em tempo de leitura pelo serviço (`FinanceiroService`), comparando `data_vencimento` com a data atual e verificando se `data_pagamento` é nula. A coluna `status_financeiro_id` no banco representa o estado formal registrado pela Contabilidade (RN-16); o status "atrasado" derivado é exposto apenas na resposta da API.
+
+- **RN-32** — Uma empresa com `tipo_empresa = 'internacional'` não tem CNPJ obrigatório, mas deve ter `identificador_estrangeiro` preenchido. Uma empresa com `tipo_empresa = 'nacional'` deve ter `cnpj` preenchido com 14 dígitos numéricos válidos. Essa validação é aplicada na camada de model (Sequelize custom validator) e duplicada na camada de controller/validação de entrada antes de persistir.
+
+- **RN-33** — Um usuário com `papel = 'empresa_afiliada'` só pode visualizar registros (empresas, contratos, documentos, financeiro, espaços físicos) vinculados ao seu próprio `empresa_id`. O isolamento é garantido pelo uso de scopes nomeados explícitos no Sequelize (ex.: `Contrato.scope({ method: ['paraEmpresa', session.empresa_id] })`), invocados obrigatoriamente no controller a partir dos dados da sessão autenticada (Auth.js). Não se usa `defaultScope` global para esse fim, pois controllers da equipe do programa precisam acessar registros de múltiplas empresas sem filtro. (Extensão: o mesmo padrão de scope nomeado se aplica também às entidades novas ligadas a empresa — `beneficios_exposicao` e `reservas_espaco`, ver ADR 0005.)
+
+## 11. Isenção de taxa, reservas de espaço e prospecção (ADR 0005)
+
+- **RN-34** — Um contrato pode ser marcado como isento da taxa de anuidade (`isento_taxa = true`) como caso especial contratual. Quando isento, o contrato **deve** ter `motivo_isencao` e `documento_referencia` preenchidos (ex.: número de um distrato/convênio que embasa a isenção) — um contrato não pode estar isento "sem justificativa registrada". A validação é aplicada na camada de model (Sequelize custom validator em `Contrato`).
+
+- **RN-35** — Uma empresa tem um limite anual de reservas por tipo de espaço compartilhado: sala do ático (`sala_atico`) e auditório (`auditorio`) — 1× por ano cada; coworking — 12× por ano. O limite conta apenas reservas cujo `status` seja diferente de `cancelado`, no ano da `data_reserva` (ou no ano corrente, se a reserva ainda não tem data definida). A validação é feita em **service** (`back/src/services/reservaEspacoService.js`), não em hook do model — antes de criar a reserva, o service verifica a contagem do ano e recusa a criação com mensagem clara se o limite já foi atingido.
+
+- **RN-36** — Quando uma empresa preenche o formulário de inscrição (RN-04) e já existia uma prospecção em aberto (status `identificado`, `material_enviado` ou `aguardando_retorno`) com o mesmo e-mail de contato ou nome de empresa, essa prospecção deve ser vinculada ao novo `formulario_respostas` (campo `formulario_resposta_id`) e seu status deve avançar para `convertido_para_formulario`. Implementado como **service** (`back/src/services/prospeccaoService.js`), chamado explicitamente por quem cria o `FormularioResposta` — não como hook automático do model, pelo mesmo motivo da RN-35 (regra de negócio deve ficar visível e testável na camada de service).
 
 ## Pendências abertas (não implementar até confirmar)
 

@@ -16,7 +16,9 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Erro interno do servidor' });
+  const status = err.status || 500;
+  const mensagem = status === 500 ? 'Erro interno do servidor' : err.message;
+  res.status(status).json({ error: mensagem });
 });
 
 module.exports = app;
