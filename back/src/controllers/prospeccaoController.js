@@ -31,7 +31,7 @@ exports.listarStatusDisponiveis = async (req, res) => {
 
 exports.criar = async (req, res) => {
   try {
-    const prospeccao = await prospeccaoService.criar(req.body);
+    const prospeccao = await prospeccaoService.criar(req.body, { usuario: req.user });
     return res.status(201).json(prospeccao);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -44,7 +44,7 @@ exports.criar = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const prospeccao = await prospeccaoService.atualizar(req.params.id, req.body);
+    const prospeccao = await prospeccaoService.atualizar(req.params.id, req.body, { usuario: req.user });
     return res.json(prospeccao);
   } catch (error) {
     if (error instanceof ApiError) {

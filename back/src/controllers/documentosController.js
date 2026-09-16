@@ -31,7 +31,7 @@ exports.upload = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const documento = await documentosService.atualizar(req.params.id, req.body);
+    const documento = await documentosService.atualizar(req.params.id, req.body, { usuario: req.user });
     return res.json(documento);
   } catch (error) {
     if (error instanceof ApiError) {

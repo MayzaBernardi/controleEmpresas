@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CODIGO_STATUS_ELABORACAO = 'elaboracao';
 const CODIGO_STATUS_VIGENTE = 'vigente';
@@ -99,7 +100,7 @@ async function listarRenovacaoPendente({ models } = {}) {
 
 // RF-03: cria o registro determinístico do contrato (a geração do PDF/documento em si é
 // fora de escopo aqui — só a regra de negócio de que não passa por LLM se aplica).
-async function gerar(body, { models } = {}) {
+async function gerar(body, { usuario, models } = {}) {
   const db = models || require('../models');
   const dados = somenteCamposPermitidos(body, CAMPOS_CRIACAO);
 
@@ -129,21 +130,44 @@ async function gerar(body, { models } = {}) {
     dados.status_contrato_id = statusElaboracao.id;
   }
 
-  return wrapSequelizeErrors(db.Contrato.create(dados));
+  const contrato = await wrapSequelizeErrors(db.Contrato.create(dados));
+  await auditoriaService.registrar({
+    entidade: 'contratos',
+    entidadeId: contrato.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: contrato.toJSON(),
+    models: db,
+  });
+  return contrato;
 }
 
-async function atualizar(id, body, { models } = {}) {
+async function atualizar(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const contrato = await buscarPorId(id, { models: db });
   const dados = somenteCamposPermitidos(body, CAMPOS_ATUALIZACAO);
+  const dadosAnteriores = {};
+  for (const campo of Object.keys(dados)) {
+    dadosAnteriores[campo] = contrato[campo];
+  }
   Object.assign(contrato, dados);
-  return wrapSequelizeErrors(contrato.save());
+  const resultado = await wrapSequelizeErrors(contrato.save());
+  await auditoriaService.registrar({
+    entidade: 'contratos',
+    entidadeId: contrato.id,
+    acao: dados.ativo === false ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: dados,
+    models: db,
+  });
+  return resultado;
 }
 
 // RF-07: renova um contrato existente criando um novo registro encadeado por
 // contrato_anterior_id, herdando empresa/plano/valor do original (a menos que o body
 // sobrescreva) e calculando as datas de vigência subsequentes.
-async function renovar(id, body, { models } = {}) {
+async function renovar(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const original = await buscarPorId(id, { models: db });
   const statusElaboracao = await buscarStatusContratoPorCodigo(CODIGO_STATUS_ELABORACAO, { models: db });
@@ -166,7 +190,16 @@ async function renovar(id, body, { models } = {}) {
     data_termino_vigencia: dataTerminoVigencia,
   };
 
-  return wrapSequelizeErrors(db.Contrato.create(dados));
+  const novoContrato = await wrapSequelizeErrors(db.Contrato.create(dados));
+  await auditoriaService.registrar({
+    entidade: 'contratos',
+    entidadeId: novoContrato.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: novoContrato.toJSON(),
+    models: db,
+  });
+  return novoContrato;
 }
 
 module.exports = {

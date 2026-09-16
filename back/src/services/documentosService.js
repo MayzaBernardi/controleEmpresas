@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CAMPOS_ATUALIZACAO = [
   'tipo_documento',
@@ -75,22 +76,45 @@ async function upload(body, { usuario, models } = {}) {
     observacoes: body.observacoes ?? null,
   };
 
-  return wrapSequelizeErrors(db.Documento.create(dados));
+  const documento = await wrapSequelizeErrors(db.Documento.create(dados));
+  await auditoriaService.registrar({
+    entidade: 'documentos',
+    entidadeId: documento.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: documento.toJSON(),
+    models: db,
+  });
+  return documento;
 }
 
 // RF-05 / RN-15: edita um documento (tipo, nome, URL/arquivo, observações), aprova/rejeita
 // (status) ou exclui (ativo) — só equipe_programa (checado na rota via requireRole, não
 // repetido aqui). Sem checagem de isolamento RN-33: quem chama este fluxo já enxerga todos
 // os documentos.
-async function atualizar(id, body, { models } = {}) {
+async function atualizar(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const documento = await db.Documento.findByPk(id);
   if (!documento) {
     throw new ApiError(404, 'Documento não encontrado.');
   }
   const dados = somenteCamposPermitidos(body || {}, CAMPOS_ATUALIZACAO);
+  const dadosAnteriores = {};
+  for (const campo of Object.keys(dados)) {
+    dadosAnteriores[campo] = documento[campo];
+  }
   Object.assign(documento, dados);
-  return wrapSequelizeErrors(documento.save());
+  const resultado = await wrapSequelizeErrors(documento.save());
+  await auditoriaService.registrar({
+    entidade: 'documentos',
+    entidadeId: documento.id,
+    acao: dados.ativo === false ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: dados,
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {

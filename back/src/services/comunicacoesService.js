@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 // RF-04/RN-24/RN-28: o "rascunho" chega pronto no body (assunto/corpo_html) — quem gera o
 // texto (hoje simulado, futuramente emailAgentService + @google/genai) é responsabilidade de
@@ -12,7 +13,7 @@ const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
 // único item cobre o caso individual, vários cobrem o envio em massa, com o mesmo fluxo.
 // Toda a operação roda em uma transação: ou a ComunicacaoEmail e todos os seus destinatários
 // são gravados juntos, ou nada é gravado.
-async function criarRascunho(body, { models } = {}) {
+async function criarRascunho(body, { usuario, models } = {}) {
   const db = models || require('../models');
   const { assunto, corpo_html: corpoHtml, observacoes_ia: observacoesIa, empresaIds } = body || {};
 
@@ -23,7 +24,7 @@ async function criarRascunho(body, { models } = {}) {
     throw new ApiError(400, 'corpo_html é obrigatório.');
   }
 
-  return db.sequelize.transaction(async (transaction) => {
+  const comunicacao = await db.sequelize.transaction(async (transaction) => {
     const comunicacao = await wrapSequelizeErrors(
       db.ComunicacaoEmail.create(
         {
@@ -51,6 +52,17 @@ async function criarRascunho(body, { models } = {}) {
 
     return comunicacao;
   });
+
+  await auditoriaService.registrar({
+    entidade: 'comunicacoes_email',
+    entidadeId: comunicacao.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: comunicacao.toJSON(),
+    models: db,
+  });
+
+  return comunicacao;
 }
 
 // RN-25: histórico auditável de todo e-mail do sistema — lista todas as comunicações, com
@@ -76,7 +88,7 @@ async function buscarPorId(id, { models } = {}) {
 // Edição humana do rascunho (revisão do texto gerado pela IA) — o conteúdo (assunto/corpo)
 // só é editável enquanto o status for rascunho, pra não alterar algo já aprovado/enviado.
 // 'ativo' (excluir/arquivar) é a exceção: funciona em qualquer status.
-async function editar(id, body, { models } = {}) {
+async function editar(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const comunicacao = await buscarPorId(id, { models: db });
 
@@ -88,6 +100,12 @@ async function editar(id, body, { models } = {}) {
     throw new ApiError(400, 'Só é possível editar o conteúdo enquanto o status for rascunho.');
   }
 
+  const dadosAnteriores = {
+    assunto: comunicacao.assunto,
+    corpo_html: comunicacao.corpo_html,
+    ativo: comunicacao.ativo,
+  };
+
   if (Object.prototype.hasOwnProperty.call(body || {}, 'assunto')) {
     comunicacao.assunto = body.assunto;
   }
@@ -98,26 +116,47 @@ async function editar(id, body, { models } = {}) {
     comunicacao.ativo = body.ativo;
   }
 
-  return wrapSequelizeErrors(comunicacao.save());
+  const resultado = await wrapSequelizeErrors(comunicacao.save());
+  await auditoriaService.registrar({
+    entidade: 'comunicacoes_email',
+    entidadeId: comunicacao.id,
+    acao: body?.ativo === false ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: { assunto: comunicacao.assunto, corpo_html: comunicacao.corpo_html, ativo: comunicacao.ativo },
+    models: db,
+  });
+  return resultado;
 }
 
 // RN-28: aprovação humana explícita — obrigatória antes de qualquer envio de e-mail gerado
 // por IA. O validator do model (revisaoHumanaObrigatoriaParaEnvioDeRascunhoDeIA) garante que
 // revisado_por_usuario_id não pode ficar vazio quando status vira 'aprovado'/'enviado'.
-async function aprovar(id, usuarioId, { models } = {}) {
+async function aprovar(id, usuarioId, { usuario, models } = {}) {
   const db = models || require('../models');
   const comunicacao = await buscarPorId(id, { models: db });
 
+  const statusAnterior = comunicacao.status;
   comunicacao.revisado_por_usuario_id = usuarioId;
   comunicacao.revisado_em = new Date();
   comunicacao.status = 'aprovado';
 
-  return wrapSequelizeErrors(comunicacao.save());
+  const resultado = await wrapSequelizeErrors(comunicacao.save());
+  await auditoriaService.registrar({
+    entidade: 'comunicacoes_email',
+    entidadeId: comunicacao.id,
+    acao: 'update',
+    usuario,
+    dadosAnteriores: { status: statusAnterior },
+    dadosNovos: { status: comunicacao.status, revisado_por_usuario_id: usuarioId },
+    models: db,
+  });
+  return resultado;
 }
 
 // RN-28: transição de estado apenas — envio de e-mail de verdade (SMTP) é fora de escopo
 // aqui. Só é permitido a partir de um e-mail já aprovado (ou seja, já revisado por humano).
-async function enviar(id, { models } = {}) {
+async function enviar(id, { usuario, models } = {}) {
   const db = models || require('../models');
   const comunicacao = await buscarPorId(id, { models: db });
 
@@ -128,7 +167,17 @@ async function enviar(id, { models } = {}) {
   comunicacao.status = 'enviado';
   comunicacao.data_envio = new Date();
 
-  return wrapSequelizeErrors(comunicacao.save());
+  const resultado = await wrapSequelizeErrors(comunicacao.save());
+  await auditoriaService.registrar({
+    entidade: 'comunicacoes_email',
+    entidadeId: comunicacao.id,
+    acao: 'update',
+    usuario,
+    dadosAnteriores: { status: 'aprovado' },
+    dadosNovos: { status: 'enviado', data_envio: comunicacao.data_envio },
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {

@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CODIGO_STATUS_PENDENTE = 'pendente';
 const CODIGO_STATUS_PAGO = 'pago';
@@ -43,7 +44,7 @@ async function listarAtrasados({ models } = {}) {
 }
 
 // RN-16: só contabilidade lança (checado na rota via requireRole, não repetido aqui).
-async function lancar(body, { models } = {}) {
+async function lancar(body, { usuario, models } = {}) {
   const db = models || require('../models');
 
   if (!body?.empresa_id) {
@@ -78,12 +79,21 @@ async function lancar(body, { models } = {}) {
     observacoes: body.observacoes ?? null,
   };
 
-  return wrapSequelizeErrors(db.FinanceiroLancamento.create(dados));
+  const lancamento = await wrapSequelizeErrors(db.FinanceiroLancamento.create(dados));
+  await auditoriaService.registrar({
+    entidade: 'financeiro_lancamentos',
+    entidadeId: lancamento.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: lancamento.toJSON(),
+    models: db,
+  });
+  return lancamento;
 }
 
 // RF-06: confirma pagamento de um lançamento — busca por id (404 se não achar), sem
 // checagem de isolamento RN-33 (só contabilidade chama este fluxo, que já enxerga tudo).
-async function confirmarPagamento(id, body, { models } = {}) {
+async function confirmarPagamento(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const lancamento = await db.FinanceiroLancamento.findByPk(id);
   if (!lancamento) {
@@ -92,13 +102,33 @@ async function confirmarPagamento(id, body, { models } = {}) {
 
   const statusPago = await buscarStatusFinanceiroPorCodigo(CODIGO_STATUS_PAGO, { models: db });
 
+  const dadosAnteriores = {
+    data_pagamento: lancamento.data_pagamento,
+    status_financeiro_id: lancamento.status_financeiro_id,
+    comprovante_url: lancamento.comprovante_url,
+  };
+
   lancamento.data_pagamento = body?.data_pagamento || hoje();
   lancamento.status_financeiro_id = statusPago.id;
   if (body?.comprovante_url !== undefined) {
     lancamento.comprovante_url = body.comprovante_url;
   }
 
-  return wrapSequelizeErrors(lancamento.save());
+  const resultado = await wrapSequelizeErrors(lancamento.save());
+  await auditoriaService.registrar({
+    entidade: 'financeiro_lancamentos',
+    entidadeId: lancamento.id,
+    acao: 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: {
+      data_pagamento: lancamento.data_pagamento,
+      status_financeiro_id: lancamento.status_financeiro_id,
+      comprovante_url: lancamento.comprovante_url,
+    },
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {

@@ -12,7 +12,7 @@ interface ModuloNav {
 }
 
 // Módulos acessíveis pela equipe do programa (docs/api/mapeamento-geral.md).
-const MODULOS: ModuloNav[] = [
+const MODULOS_EQUIPE_PROGRAMA: ModuloNav[] = [
   { label: "Empresas", href: "/empresas" },
   { label: "Formulários de inscrição", href: "/formulario-respostas" },
   { label: "Prospecção", href: "/prospeccoes" },
@@ -25,6 +25,11 @@ const MODULOS: ModuloNav[] = [
   { label: "Auditoria", href: "/log-auditoria" },
   { label: "Usuários", href: "/usuarios" },
 ];
+
+// Contabilidade só tem endpoints liberados no back (RN-16) para financeiro-lancamentos
+// (lançar boleto/nota e confirmar pagamento) — o único módulo com painel próprio pra esse
+// perfil, por ora.
+const MODULOS_CONTABILIDADE: ModuloNav[] = [{ label: "Financeiro", href: "/financeiro-lancamentos" }];
 
 function NavItem({ modulo }: { modulo: ModuloNav }) {
   const pathname = usePathname();
@@ -45,7 +50,7 @@ function NavItem({ modulo }: { modulo: ModuloNav }) {
   return (
     <Link
       href={modulo.href}
-      className={`block rounded-brand border-l-[3px] px-3 py-2 text-sm font-medium transition-colors ${
+      className={`block rounded-brand border-l-[3px] px-4 py-3 text-base font-medium transition-colors ${
         ativo
           ? "border-secondary bg-secondary-subtle text-secondary-foreground"
           : "border-transparent text-foreground hover:bg-neutral-100"
@@ -64,6 +69,7 @@ const PAPEL_LABEL: Record<string, string> = {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { usuario, carregando, logout } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
 
@@ -73,6 +79,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [carregando, usuario, router]);
 
+  // Contabilidade só tem painel de Financeiro — qualquer outra rota (ex.: o redirect padrão
+  // de login para /empresas) manda de volta pra lá.
+  useEffect(() => {
+    if (usuario?.papel === "contabilidade" && !pathname.startsWith("/financeiro-lancamentos")) {
+      router.replace("/financeiro-lancamentos");
+    }
+  }, [usuario, pathname, router]);
+
   if (carregando || !usuario) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-neutral-600">
@@ -81,8 +95,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // Telas de equipe_programa só — outros perfis ainda não têm painel próprio construído.
-  if (usuario.papel !== "equipe_programa") {
+  // Empresa afiliada ainda não tem painel próprio construído.
+  if (usuario.papel !== "equipe_programa" && usuario.papel !== "contabilidade") {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
         <p className="font-display text-lg font-semibold text-foreground">
@@ -120,21 +134,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </header>
 
       <aside
-        className={`w-full shrink-0 border-b border-neutral-100 bg-background px-4 py-6 md:block md:w-64 md:border-b-0 md:border-r md:px-4 ${
-          menuAberto ? "block" : "hidden"
+        className={`w-full shrink-0 flex-col border-b border-neutral-100 bg-background px-4 py-6 md:flex md:w-72 md:border-b-0 md:border-r md:px-4 ${
+          menuAberto ? "flex" : "hidden"
         }`}
       >
         <div className="mb-6 hidden px-2 md:block">
-          <PollenLogo textClassName="text-xl text-foreground" />
+          <PollenLogo textClassName="text-5xl text-foreground" />
         </div>
 
-        <nav className="flex flex-col gap-1">
-          {MODULOS.map((modulo) => (
+        <nav className="flex flex-col gap-1.5">
+          {(usuario.papel === "contabilidade" ? MODULOS_CONTABILIDADE : MODULOS_EQUIPE_PROGRAMA).map((modulo) => (
             <NavItem key={modulo.label} modulo={modulo} />
           ))}
         </nav>
 
-        <div className="mt-8 border-t border-neutral-100 pt-4">
+        <div className="mt-8 border-t border-neutral-100 pt-4 md:mt-auto">
           <p className="px-2 text-sm font-medium text-foreground">{usuario.nome}</p>
           <p className="px-2 text-xs text-neutral-600">
             {PAPEL_LABEL[usuario.papel] ?? usuario.papel}

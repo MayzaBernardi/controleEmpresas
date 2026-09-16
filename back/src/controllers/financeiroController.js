@@ -31,7 +31,7 @@ exports.listarAtrasados = async (req, res) => {
 
 exports.lancar = async (req, res) => {
   try {
-    const lancamento = await financeiroService.lancar(req.body);
+    const lancamento = await financeiroService.lancar(req.body, { usuario: req.user });
     return res.status(201).json(lancamento);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -44,7 +44,7 @@ exports.lancar = async (req, res) => {
 
 exports.confirmarPagamento = async (req, res) => {
   try {
-    const lancamento = await financeiroService.confirmarPagamento(req.params.id, req.body);
+    const lancamento = await financeiroService.confirmarPagamento(req.params.id, req.body, { usuario: req.user });
     return res.json(lancamento);
   } catch (error) {
     if (error instanceof ApiError) {

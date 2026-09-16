@@ -1,7 +1,9 @@
-// Sugestão de corpo de e-mail por modelo/template local (sem depender de LLM/API externa
-// por enquanto — decisão do negócio em 2026-09-16; GEMINI_API_KEY ainda não está
-// configurada). Escolhe um template por palavra-chave no assunto; cai num genérico se nada
-// bater. Sempre marcado como ponto de partida — a equipe revisa/edita antes de aprovar (RN-28).
+// Sugestão de corpo de e-mail por modelo/template local. Desde 2026-09-16 a sugestão "de
+// verdade" é gerada pela IA (Gemini), via POST /comunicacoes-email/sugestao-corpo — esta função
+// serve como FALLBACK, usada pela página de comunicações quando a chamada à API falha (rede,
+// Gemini fora do ar, etc.), pra nunca deixar o campo vazio nem quebrar a tela. Escolhe um
+// template por palavra-chave no assunto; cai num genérico se nada bater. Sempre marcado como
+// ponto de partida — a equipe revisa/edita antes de aprovar (RN-28).
 export function sugerirCorpoEmail(assunto: string): string {
   const texto = assunto.toLowerCase();
 

@@ -103,8 +103,8 @@ export default function FormularioRespostaDetalhePage({
                 onChange={(e) => setStatusTriagem(e.target.value)}
                 required
               >
-                <option value="aguardando">Aguardando preenchimento</option>
-                <option value="finalizado">Finalizado</option>
+                <option value="aguardando">Enviado</option>
+                <option value="finalizado">Preenchimento finalizado</option>
               </Select>
             </Field>
 
