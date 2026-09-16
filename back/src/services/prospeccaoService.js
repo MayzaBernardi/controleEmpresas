@@ -4,11 +4,9 @@ const { Op } = require('sequelize');
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
 
-const STATUS_PROSPECCAO_ABERTOS = ['identificado', 'material_enviado', 'aguardando_retorno'];
-const STATUS_PROSPECCAO_CONVERTIDO = 'convertido_para_formulario';
-const STATUS_PROSPECCAO_PADRAO = 'identificado';
+const STATUS_PROSPECCAO_PADRAO = 'em_contato';
 
-const CAMPOS_PERMITIDOS = [
+const CAMPOS_CRIACAO = [
   'nome_empresa',
   'cidade',
   'uf',
@@ -18,6 +16,9 @@ const CAMPOS_PERMITIDOS = [
   'status_prospeccao_id',
   'observacoes',
 ];
+
+// 'ativo' só é atualizável (soft-delete) — nunca setável na criação.
+const CAMPOS_ATUALIZACAO = [...CAMPOS_CRIACAO, 'ativo'];
 
 function somenteCamposPermitidos(body, camposPermitidos) {
   const dados = {};
@@ -30,29 +31,27 @@ function somenteCamposPermitidos(body, camposPermitidos) {
 }
 
 /**
- * RN-36: quando um FormularioResposta é criado, vincula (se existir) uma prospecção em
- * aberto com o mesmo e-mail de contato ou nome de empresa, e atualiza seu status para
- * "convertido_para_formulario". Implementado como service — não como hook automático do
- * model — para manter a regra visível e testável na camada correta (routes -> controllers
- * -> services -> models). Quem cria o FormularioResposta deve chamar esta função em seguida,
- * dentro da mesma transação da criação.
+ * RN-36: quando um FormularioResposta é criado, vincula (se existir) uma prospecção ainda
+ * não convertida (formulario_resposta_id nulo) e ativa, com o mesmo e-mail de contato ou
+ * nome de empresa. Implementado como service — não como hook automático do model — para
+ * manter a regra visível e testável na camada correta. Quem cria o FormularioResposta deve
+ * chamar esta função em seguida, dentro da mesma transação da criação.
+ *
+ * Decisão de negócio (2026-09-16): a taxonomia de status_prospeccao (em_contato /
+ * nao_constatada / proposta_rejeitada) não tem um estado "convertida" — a conversão em si é
+ * só `formulario_resposta_id` deixando de ser null, e a prospecção some da listagem nesse
+ * momento (ver `listar` abaixo). O status que a prospecção tinha antes de converter não
+ * muda.
  *
  * @param {object} formularioResposta - instância de FormularioResposta já criada.
  * @param {object} [opcoes]
  * @param {import('sequelize').Transaction} [opcoes.transaction]
  * @param {object} [opcoes.models] - override para testes; por padrão usa `../models`.
- * @returns {Promise<object|null>} a Prospeccao vinculada, ou null se nenhuma estava em aberto.
+ * @returns {Promise<object|null>} a Prospeccao vinculada, ou null se nenhuma foi encontrada.
  */
 async function vincularProspeccaoAoFormulario(formularioResposta, { transaction, models } = {}) {
   const db = models || require('../models');
-  const { Prospeccao, StatusProspeccao } = db;
-
-  const statusAbertos = await StatusProspeccao.findAll({
-    where: { codigo: STATUS_PROSPECCAO_ABERTOS },
-    transaction,
-  });
-  const idsStatusAbertos = statusAbertos.map((s) => s.id);
-  if (idsStatusAbertos.length === 0) return null;
+  const { Prospeccao } = db;
 
   const nomeEmpresa =
     formularioResposta.payload_respostas && typeof formularioResposta.payload_respostas === 'object'
@@ -70,36 +69,27 @@ async function vincularProspeccaoAoFormulario(formularioResposta, { transaction,
 
   const prospeccao = await Prospeccao.findOne({
     where: {
-      [Op.and]: [{ status_prospeccao_id: idsStatusAbertos }, { [Op.or]: condicoesDeCorrespondencia }],
+      [Op.and]: [{ ativo: true }, { formulario_resposta_id: null }, { [Op.or]: condicoesDeCorrespondencia }],
     },
     transaction,
   });
   if (!prospeccao) return null;
 
-  const statusConvertido = await StatusProspeccao.findOne({
-    where: { codigo: STATUS_PROSPECCAO_CONVERTIDO },
-    transaction,
-  });
-
-  await prospeccao.update(
-    {
-      formulario_resposta_id: formularioResposta.id,
-      status_prospeccao_id: statusConvertido.id,
-    },
-    { transaction }
-  );
+  await prospeccao.update({ formulario_resposta_id: formularioResposta.id }, { transaction });
 
   return prospeccao;
 }
 
 /**
- * ADR 0005 §3: lista todas as prospecções (sem isolamento por empresa — é dado interno
- * da equipe de programa, anterior a existir uma Empresa), com o status vinculado
- * incluído, mais recentes primeiro.
+ * ADR 0005 §3: lista as prospecções ainda ativas e não convertidas (sem isolamento por
+ * empresa — é dado interno da equipe de programa, anterior a existir uma Empresa), com o
+ * status vinculado incluído, mais recentes primeiro. Uma prospecção some daqui assim que
+ * `formulario_resposta_id` é preenchido (RN-36) ou quando é excluída (ativo=false).
  */
 async function listar({ models } = {}) {
   const db = models || require('../models');
   return db.Prospeccao.findAll({
+    where: { ativo: true, formulario_resposta_id: null },
     include: [{ model: db.StatusProspeccao, as: 'statusProspeccao' }],
     order: [['createdAt', 'DESC']],
   });
@@ -107,7 +97,7 @@ async function listar({ models } = {}) {
 
 /**
  * Busca o id de status_prospeccao pelo `codigo` informado, lançando ApiError(400) se não
- * existir — usado tanto para o default (RN-... "identificado") quanto para validar um
+ * existir — usado tanto para o default ("em_contato") quanto para validar um
  * status_prospeccao_id enviado explicitamente pelo chamador.
  */
 async function buscarStatusProspeccaoIdPorCodigo(codigo, { transaction, models } = {}) {
@@ -129,12 +119,12 @@ async function validarStatusProspeccaoId(statusProspeccaoId, { models } = {}) {
 
 /**
  * Cria uma Prospeccao. `nome_empresa` é obrigatório; se `status_prospeccao_id` não vier
- * no body, usa o id de codigo="identificado" (buscado, nunca chumbado); se vier, valida
+ * no body, usa o id de codigo="em_contato" (buscado, nunca chumbado); se vier, valida
  * que existe em status_prospeccao.
  */
 async function criar(body, { models } = {}) {
   const db = models || require('../models');
-  const dados = somenteCamposPermitidos(body || {}, CAMPOS_PERMITIDOS);
+  const dados = somenteCamposPermitidos(body || {}, CAMPOS_CRIACAO);
 
   if (!dados.nome_empresa) {
     throw new ApiError(400, 'nome_empresa é obrigatório.');
@@ -150,8 +140,9 @@ async function criar(body, { models } = {}) {
 }
 
 /**
- * Atualiza uma Prospeccao existente. Sem isolamento por empresa (ADR 0005 §3: é dado
- * interno da equipe, anterior a existir uma Empresa).
+ * Atualiza (edição de dados, mudança de status, ou soft-delete via `ativo`) uma Prospeccao
+ * existente. Sem isolamento por empresa (ADR 0005 §3: é dado interno da equipe, anterior a
+ * existir uma Empresa).
  */
 async function atualizar(id, body, { models } = {}) {
   const db = models || require('../models');
@@ -160,7 +151,7 @@ async function atualizar(id, body, { models } = {}) {
     throw new ApiError(404, 'Prospecção não encontrada.');
   }
 
-  const dados = somenteCamposPermitidos(body || {}, CAMPOS_PERMITIDOS);
+  const dados = somenteCamposPermitidos(body || {}, CAMPOS_ATUALIZACAO);
 
   if (Object.prototype.hasOwnProperty.call(dados, 'status_prospeccao_id') && dados.status_prospeccao_id !== null) {
     await validarStatusProspeccaoId(dados.status_prospeccao_id, { models: db });
@@ -170,4 +161,11 @@ async function atualizar(id, body, { models } = {}) {
   return wrapSequelizeErrors(prospeccao.save());
 }
 
-module.exports = { vincularProspeccaoAoFormulario, listar, criar, atualizar };
+// Lookup pro front montar o seletor de status na edição — sem isso não há como saber os
+// ids válidos de status_prospeccao (não é um ENUM fixo no código, é uma tabela).
+async function listarStatusDisponiveis({ models } = {}) {
+  const db = models || require('../models');
+  return db.StatusProspeccao.findAll({ order: [['id', 'ASC']] });
+}
+
+module.exports = { vincularProspeccaoAoFormulario, listar, criar, atualizar, listarStatusDisponiveis };

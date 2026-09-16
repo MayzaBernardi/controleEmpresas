@@ -1,15 +1,30 @@
 'use strict';
 
 const usuariosService = require('../services/usuariosService');
+const ApiError = require('../utils/ApiError');
 
-async function listar(req, res) {
-  const usuarios = await usuariosService.listar();
-  res.json(usuarios);
-}
+exports.listar = async (req, res) => {
+  try {
+    const usuarios = await usuariosService.listar();
+    return res.json(usuarios);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function atualizar(req, res) {
-  const usuario = await usuariosService.atualizar(req.params.id, req.body);
-  res.json(usuario);
-}
-
-module.exports = { listar, atualizar };
+exports.atualizar = async (req, res) => {
+  try {
+    const usuario = await usuariosService.atualizar(req.params.id, req.body);
+    return res.json(usuario);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

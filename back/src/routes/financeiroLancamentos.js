@@ -1,28 +1,34 @@
 'use strict';
 
 const { Router } = require('express');
-const controller = require('../controllers/financeiroController');
+const {
+  listar,
+  listarAtrasados,
+  lancar,
+  confirmarPagamento,
+} = require('../controllers/financeiroController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = Router();
-
-router.use(authMiddleware);
 
 // Precisa vir antes de qualquer rota '/:id' — senão "atrasados" seria capturado como :id.
 router.get(
   '/atrasados',
+  authMiddleware,
   requireRole('equipe_programa', 'contabilidade'),
-  asyncHandler(controller.listarAtrasados)
+  listarAtrasados
 );
 
 router.get(
   '/',
+  authMiddleware,
   requireRole('equipe_programa', 'contabilidade', 'empresa_afiliada'),
-  asyncHandler(controller.listar)
+  listar
 );
-router.post('/', requireRole('contabilidade'), asyncHandler(controller.lancar));
-router.patch('/:id/pagamento', requireRole('contabilidade'), asyncHandler(controller.confirmarPagamento));
+
+router.post('/', authMiddleware, requireRole('contabilidade'), lancar);
+
+router.patch('/:id/pagamento', authMiddleware, requireRole('contabilidade'), confirmarPagamento);
 
 module.exports = router;

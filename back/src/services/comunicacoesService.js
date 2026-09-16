@@ -58,6 +58,7 @@ async function criarRascunho(body, { models } = {}) {
 async function listar({ models } = {}) {
   const db = models || require('../models');
   return db.ComunicacaoEmail.findAll({
+    where: { ativo: true },
     include: [{ association: 'destinatarios' }],
     order: [['created_at', 'DESC']],
   });
@@ -72,14 +73,19 @@ async function buscarPorId(id, { models } = {}) {
   return comunicacao;
 }
 
-// Edição humana do rascunho (revisão do texto gerado pela IA) — só permitida enquanto o
-// e-mail ainda não avançou de status, para não alterar o conteúdo de algo já aprovado/enviado.
+// Edição humana do rascunho (revisão do texto gerado pela IA) — o conteúdo (assunto/corpo)
+// só é editável enquanto o status for rascunho, pra não alterar algo já aprovado/enviado.
+// 'ativo' (excluir/arquivar) é a exceção: funciona em qualquer status.
 async function editar(id, body, { models } = {}) {
   const db = models || require('../models');
   const comunicacao = await buscarPorId(id, { models: db });
 
-  if (comunicacao.status !== 'rascunho') {
-    throw new ApiError(400, 'Só é possível editar enquanto o status for rascunho.');
+  const mexeNoConteudo =
+    Object.prototype.hasOwnProperty.call(body || {}, 'assunto') ||
+    Object.prototype.hasOwnProperty.call(body || {}, 'corpo_html');
+
+  if (mexeNoConteudo && comunicacao.status !== 'rascunho') {
+    throw new ApiError(400, 'Só é possível editar o conteúdo enquanto o status for rascunho.');
   }
 
   if (Object.prototype.hasOwnProperty.call(body || {}, 'assunto')) {
@@ -87,6 +93,9 @@ async function editar(id, body, { models } = {}) {
   }
   if (Object.prototype.hasOwnProperty.call(body || {}, 'corpo_html')) {
     comunicacao.corpo_html = body.corpo_html;
+  }
+  if (Object.prototype.hasOwnProperty.call(body || {}, 'ativo')) {
+    comunicacao.ativo = body.ativo;
   }
 
   return wrapSequelizeErrors(comunicacao.save());

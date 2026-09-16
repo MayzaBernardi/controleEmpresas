@@ -20,7 +20,9 @@ const CAMPOS_CRIACAO = [
   'representante_legal',
 ];
 
-const CAMPOS_ATUALIZACAO = CAMPOS_CRIACAO;
+// 'ativo' só é atualizável, nunca setável na criação (toda empresa nova começa ativa) —
+// é o campo usado para "excluir" (soft-delete, RN a confirmar formalmente).
+const CAMPOS_ATUALIZACAO = [...CAMPOS_CRIACAO, 'ativo'];
 
 function somenteCamposPermitidos(body, camposPermitidos) {
   const dados = {};
@@ -34,7 +36,7 @@ function somenteCamposPermitidos(body, camposPermitidos) {
 
 async function listar({ models } = {}) {
   const db = models || require('../models');
-  return db.Empresa.findAll({ order: [['razao_social', 'ASC']] });
+  return db.Empresa.findAll({ where: { ativo: true }, order: [['razao_social', 'ASC']] });
 }
 
 async function buscarPorId(id, { models } = {}) {

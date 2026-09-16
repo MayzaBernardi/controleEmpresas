@@ -1,17 +1,16 @@
 'use strict';
 
 const { Router } = require('express');
-const controller = require('../controllers/reservasEspacoController');
+const { listar, criar, atualizarStatus } = require('../controllers/reservasEspacoController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = Router();
 
-router.use(authMiddleware);
+router.get('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada'), listar);
 
-router.get('/', requireRole('equipe_programa', 'empresa_afiliada'), asyncHandler(controller.listar));
-router.post('/', requireRole('equipe_programa', 'empresa_afiliada'), asyncHandler(controller.criar));
-router.patch('/:id', requireRole('equipe_programa'), asyncHandler(controller.atualizarStatus));
+router.post('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada'), criar);
+
+router.patch('/:id', authMiddleware, requireRole('equipe_programa'), atualizarStatus);
 
 module.exports = router;

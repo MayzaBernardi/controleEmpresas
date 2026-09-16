@@ -82,13 +82,11 @@ describe("Migrations ADR 0005 — espacos_fisicos (ADR 0004) não foi removida n
 });
 
 describe("Migrations ADR 0005 — tabelas de referência novas vieram populadas pelo seed da migration", () => {
-  test("status_prospeccao tem os 5 códigos esperados", async () => {
+  test("status_prospeccao tem os 3 códigos esperados (redefinido com o negócio em 2026-09-16)", async () => {
     const { StatusProspeccao } = db;
     const codigos = (await StatusProspeccao.findAll()).map((s) => s.codigo).sort();
 
-    expect(codigos).toEqual(
-      ["identificado", "material_enviado", "aguardando_retorno", "convertido_para_formulario", "descartado"].sort()
-    );
+    expect(codigos).toEqual(["em_contato", "nao_constatada", "proposta_rejeitada"].sort());
   });
 
   test("status_processo tem os 8 estágios do funil, na ordem certa (coluna `ordem`)", async () => {

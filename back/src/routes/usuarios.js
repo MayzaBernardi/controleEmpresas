@@ -1,17 +1,14 @@
 'use strict';
 
 const { Router } = require('express');
-const controller = require('../controllers/usuariosController');
+const { listar, atualizar } = require('../controllers/usuariosController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = Router();
 
-router.use(authMiddleware);
-router.use(requireRole('equipe_programa'));
+router.get('/', authMiddleware, requireRole('equipe_programa'), listar);
 
-router.get('/', asyncHandler(controller.listar));
-router.patch('/:id', asyncHandler(controller.atualizar));
+router.patch('/:id', authMiddleware, requireRole('equipe_programa'), atualizar);
 
 module.exports = router;

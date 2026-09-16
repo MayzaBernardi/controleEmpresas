@@ -29,6 +29,10 @@ encadeadas e o acompanhamento do trâmite na Procuradoria Jurídica (RN-08).
 | `documento_referencia` | STRING(100) | condicional | Ex.: `"DISTRATO 129/2023-1"`. Obrigatório quando `isento_taxa = true` (RN-34). |
 | `isencao_inicio` | DATEONLY | não | |
 | `isencao_fim` | DATEONLY | não | |
+| `arquivo_nome` | STRING(500) | não | Nome do arquivo do contrato assinado (PNG/PDF), anexado no cadastro/edição. ADR 0007 §2. |
+| `arquivo_mimetype` | STRING(150) | não | Ex.: `application/pdf`. ADR 0007 §2. |
+| `arquivo_base64` | TEXT | não | Conteúdo do arquivo em base64, direto no Postgres — sem storage externo (RN-38/ADR 0007 §2). |
+| `ativo` | BOOLEAN | sim | Default `true`. Excluir é soft-delete (RN-37/ADR 0007). |
 | `created_at` / `updated_at` | TIMESTAMP | sim (auto) | |
 
 ### Campos virtuais (não persistidos)
@@ -51,6 +55,9 @@ encadeadas e o acompanhamento do trâmite na Procuradoria Jurídica (RN-08).
   - "Encerrado por vencimento": `data_termino_vigencia < hoje` **e** sem contrato subsequente vigente vinculado via `contrato_anterior_id`.
 - **RN-33** (scope nomeado `paraEmpresa(empresaId)`, `where` embrulhado em `Op.and` para permanecer seguro mesmo com `findByPk` — ver nota completa em [`empresa.md`](./empresa.md)).
 - **RN-34** (validator condicional no model, ADR 0005 §2): `isento_taxa = true` exige `motivo_isencao` e `documento_referencia` preenchidos.
+- **RN-37** (ADR 0007): `ativo = false` é a única forma de "excluir" — nunca `DELETE`.
+- **RN-38** (ADR 0007 §2): upload de arquivo (PNG/PDF) em base64, sem storage externo.
+- **RN-42** (ADR 0007 §5): no front, "Renovar" não chama mais `POST /contratos/:id/renovar` direto — leva para Comunicações com um rascunho de e-mail. O endpoint continua existindo para a criação de fato do contrato renovado.
 
 ## Notas
 
