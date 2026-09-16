@@ -25,11 +25,17 @@ const CAMPOS_CRIACAO = [
   'documento_referencia',
   'isencao_inicio',
   'isencao_fim',
+  // Upload do contrato assinado (PNG/PDF em base64) — os contratos são gerados
+  // manualmente pela equipe fora do sistema; isto é só o registro do arquivo em si.
+  'arquivo_nome',
+  'arquivo_mimetype',
+  'arquivo_base64',
 ];
 
 // RN-11 / ADR: empresa_id não muda depois de criado — todos os demais campos são
-// livremente atualizáveis pela equipe do programa.
-const CAMPOS_ATUALIZACAO = CAMPOS_CRIACAO.filter((campo) => campo !== 'empresa_id');
+// livremente atualizáveis pela equipe do programa. 'ativo' só é atualizável (soft-delete),
+// nunca setável na criação.
+const CAMPOS_ATUALIZACAO = [...CAMPOS_CRIACAO.filter((campo) => campo !== 'empresa_id'), 'ativo'];
 
 function somenteCamposPermitidos(body, camposPermitidos) {
   const dados = {};
@@ -60,9 +66,9 @@ function somarDias(dataOneOnly, dias) {
 async function listar({ usuario, models } = {}) {
   const db = models || require('../models');
   if (usuario?.papel === 'empresa_afiliada') {
-    return db.Contrato.scope({ method: ['paraEmpresa', usuario.empresaId] }).findAll();
+    return db.Contrato.scope({ method: ['paraEmpresa', usuario.empresaId] }).findAll({ where: { ativo: true } });
   }
-  return db.Contrato.findAll();
+  return db.Contrato.findAll({ where: { ativo: true } });
 }
 
 // Padrão seguro RN-33: nunca combinar scope `paraEmpresa` com findByPk — busca sem

@@ -1,35 +1,82 @@
 'use strict';
 
 const contratosService = require('../services/contratosService');
+const ApiError = require('../utils/ApiError');
 
-async function listar(req, res) {
-  const contratos = await contratosService.listar({ usuario: req.user });
-  res.json(contratos);
-}
+exports.listar = async (req, res) => {
+  try {
+    const contratos = await contratosService.listar({ usuario: req.user });
+    return res.json(contratos);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function listarRenovacaoPendente(req, res) {
-  const contratos = await contratosService.listarRenovacaoPendente();
-  res.json(contratos);
-}
+exports.listarRenovacaoPendente = async (req, res) => {
+  try {
+    const contratos = await contratosService.listarRenovacaoPendente();
+    return res.json(contratos);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function detalhar(req, res) {
-  const contrato = await contratosService.buscarPorId(req.params.id, { usuario: req.user });
-  res.json(contrato);
-}
+exports.detalhar = async (req, res) => {
+  try {
+    const contrato = await contratosService.buscarPorId(req.params.id, { usuario: req.user });
+    return res.json(contrato);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function gerar(req, res) {
-  const contrato = await contratosService.gerar(req.body);
-  res.status(201).json(contrato);
-}
+exports.gerar = async (req, res) => {
+  try {
+    const contrato = await contratosService.gerar(req.body);
+    return res.status(201).json(contrato);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function atualizar(req, res) {
-  const contrato = await contratosService.atualizar(req.params.id, req.body);
-  res.json(contrato);
-}
+exports.atualizar = async (req, res) => {
+  try {
+    const contrato = await contratosService.atualizar(req.params.id, req.body);
+    return res.json(contrato);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function renovar(req, res) {
-  const contrato = await contratosService.renovar(req.params.id, req.body);
-  res.status(201).json(contrato);
-}
-
-module.exports = { listar, listarRenovacaoPendente, detalhar, gerar, atualizar, renovar };
+exports.renovar = async (req, res) => {
+  try {
+    const contrato = await contratosService.renovar(req.params.id, req.body);
+    return res.status(201).json(contrato);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

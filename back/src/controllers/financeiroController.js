@@ -1,25 +1,56 @@
 'use strict';
 
 const financeiroService = require('../services/financeiroService');
+const ApiError = require('../utils/ApiError');
 
-async function listar(req, res) {
-  const lancamentos = await financeiroService.listar({ usuario: req.user });
-  res.json(lancamentos);
-}
+exports.listar = async (req, res) => {
+  try {
+    const lancamentos = await financeiroService.listar({ usuario: req.user });
+    return res.json(lancamentos);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function listarAtrasados(req, res) {
-  const lancamentos = await financeiroService.listarAtrasados();
-  res.json(lancamentos);
-}
+exports.listarAtrasados = async (req, res) => {
+  try {
+    const lancamentos = await financeiroService.listarAtrasados();
+    return res.json(lancamentos);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function lancar(req, res) {
-  const lancamento = await financeiroService.lancar(req.body);
-  res.status(201).json(lancamento);
-}
+exports.lancar = async (req, res) => {
+  try {
+    const lancamento = await financeiroService.lancar(req.body);
+    return res.status(201).json(lancamento);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function confirmarPagamento(req, res) {
-  const lancamento = await financeiroService.confirmarPagamento(req.params.id, req.body);
-  res.json(lancamento);
-}
-
-module.exports = { listar, listarAtrasados, lancar, confirmarPagamento };
+exports.confirmarPagamento = async (req, res) => {
+  try {
+    const lancamento = await financeiroService.confirmarPagamento(req.params.id, req.body);
+    return res.json(lancamento);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

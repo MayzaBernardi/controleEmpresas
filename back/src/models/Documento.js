@@ -36,9 +36,19 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(500),
         allowNull: false,
       },
+      // Opcional agora: um documento tem OU uma url_arquivo externa OU um upload direto
+      // (arquivo_base64) — pelo menos um dos dois, validado no service, não no model.
       url_arquivo: {
         type: DataTypes.STRING(1000),
-        allowNull: false,
+        allowNull: true,
+      },
+      arquivo_mimetype: {
+        type: DataTypes.STRING(150),
+        allowNull: true,
+      },
+      arquivo_base64: {
+        type: DataTypes.TEXT,
+        allowNull: true,
       },
       status: {
         type: DataTypes.ENUM('pendente', 'aprovado', 'rejeitado'),
@@ -48,6 +58,12 @@ module.exports = (sequelize, DataTypes) => {
       observacoes: {
         type: DataTypes.TEXT,
         allowNull: true,
+      },
+      // Excluir é soft-delete (sai da listagem).
+      ativo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
       },
     },
     {

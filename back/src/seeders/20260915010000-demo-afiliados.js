@@ -124,6 +124,9 @@ module.exports = {
       }
     });
 
+    // Todas as empresas ocupam espaço físico no campus em Chapecó/SC (ver espacos_fisicos
+    // abaixo) — cidade/uf nunca tinham sido preenchidos no seed, por isso apareciam em
+    // branco na listagem.
     const empresas = empresasDef.map((def) => ({
       id: def.id,
       razao_social: def.razao_social,
@@ -135,6 +138,8 @@ module.exports = {
       descricao_caso_especial: def.descricao_caso_especial || null,
       status_processo: def.status_processo,
       contatos: JSON.stringify({ email: `contato@${def.key}.com.br`, telefone: '(19) 3000-0000' }),
+      cidade: 'Chapecó',
+      uf: 'SC',
       observacoes: null,
     }));
 
@@ -184,7 +189,7 @@ module.exports = {
         empresa_id: porKey[key].id,
         email_contato: `contato@${key}.com.br`,
         payload_respostas: JSON.stringify({ razao_social: porKey[key].razao_social, interesse: 'edital 2026' }),
-        status_triagem: 'triado',
+        status_triagem: 'finalizado',
         observacoes_triagem: 'Cadastro criado a partir da submissão; aguardando elaboração de contrato.',
       });
     });

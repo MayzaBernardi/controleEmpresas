@@ -58,27 +58,34 @@ durante a implementação.
 | GET | `/empresas/me` | `empresasController.minhaEmpresa` | `empresasService.buscarPorId` | `Empresa` | EA | `req.user.empresa_id`, sem scope por PK |
 | GET | `/empresas/:id` | `empresasController.detalhar` | `empresasService.buscarPorId` | `Empresa` | EP, CT | |
 | POST | `/empresas` | `empresasController.criar` | `empresasService.criar` | `Empresa` | EP | Normalmente a partir de um `formulario_respostas`/`prospeccao` triado (RN-04) |
-| PATCH | `/empresas/:id` | `empresasController.atualizar` | `empresasService.atualizar` | `Empresa` | EP | Inclui `tipo_caso_especial`/`descricao_caso_especial` (RF-11) |
+| PATCH | `/empresas/:id` | `empresasController.atualizar` | `empresasService.atualizar` | `Empresa` | EP | Inclui `tipo_caso_especial`/`descricao_caso_especial` (RF-11) e `ativo` (RN-37) |
 | PATCH | `/empresas/:id/status-processo` | `empresasController.atualizarStatusProcesso` | `empresasService.atualizarStatusProcesso` | `Empresa`, `StatusProcesso` | EP | Move `status_processo_id` no funil (ADR 0005 §4); RN-06 ⚠️ ainda pendente de confirmação — usar com cautela |
 
-Sem rota de exclusão — não há regra que modele remoção de empresa.
+"Excluir" (2026-09-16, ADR 0007) é `PATCH /empresas/:id` com `{ "ativo": false }`
+— soft-delete, sem rota `DELETE` dedicada (RN-37). `GET /empresas` só retorna
+`ativo = true`.
 
 ## 2. Formulário de Inscrição (RF-01, RN-04)
 
 | Método | Rota | Controller | Service | Model(s) | Perfil | Notas |
 |---|---|---|---|---|---|---|
-| POST | `/formulario-respostas` | `formularioController.submeter` | `formularioService.registrarSubmissao` | `FormularioResposta` | pub | Chama `prospeccaoService.vincularProspeccaoAoFormulario` (RN-36) logo em seguida, na mesma transação |
-| GET | `/formulario-respostas` | `formularioController.listar` | `formularioService.listar` | `FormularioResposta` | EP | Para triagem |
+| POST | `/formulario-respostas` | `formularioController.submeter` | `formularioService.registrarSubmissao` | `FormularioResposta` | pub | Chama `prospeccaoService.vincularProspeccaoAoFormulario` (RN-36) logo em seguida, na mesma transação. No front, esta rota é usada pela página pública `/inscricao` (ADR 0007 §4) |
+| GET | `/formulario-respostas` | `formularioController.listar` | `formularioService.listar` | `FormularioResposta` | EP | Para triagem. No front, esconde formulários cuja empresa vinculada já tem contrato ativo (RN-40) — calculado no front, não filtrado pelo back |
 | GET | `/formulario-respostas/:id` | `formularioController.detalhar` | `formularioService.buscarPorId` | `FormularioResposta` | EP | |
-| PATCH | `/formulario-respostas/:id/triagem` | `formularioController.triar` | `formularioService.triar` | `FormularioResposta` | EP | Atualiza `status_triagem`/`observacoes_triagem`; pode disparar `POST /empresas` |
+| PATCH | `/formulario-respostas/:id/triagem` | `formularioController.triar` | `formularioService.triar` | `FormularioResposta` | EP | Atualiza `status_triagem`/`observacoes_triagem`; pode disparar `POST /empresas`. `status_triagem` só usa `aguardando`/`finalizado` desde 2026-09-16 (RN-40) |
 
 ## 3. Prospecção (ADR 0005 §3, RN-36)
 
 | Método | Rota | Controller | Service | Model(s) | Perfil | Notas |
 |---|---|---|---|---|---|---|
-| GET | `/prospeccoes` | `prospeccaoController.listar` | `prospeccaoService.listar` (novo método) | `Prospeccao`, `StatusProspeccao` | EP | Sem scope por empresa — não é dado de empresa afiliada ainda |
+| GET | `/prospeccoes/status-disponiveis` | `prospeccaoController.listarStatusDisponiveis` | `prospeccaoService.listarStatusDisponiveis` | `StatusProspeccao` | EP | Lookup pro front montar o seletor de status na edição (não é ENUM fixo, é tabela) |
+| GET | `/prospeccoes` | `prospeccaoController.listar` | `prospeccaoService.listar` (novo método) | `Prospeccao`, `StatusProspeccao` | EP | Sem scope por empresa — não é dado de empresa afiliada ainda. Só retorna `ativo=true` e `formulario_resposta_id=null` (excluídas e convertidas somem daqui) |
 | POST | `/prospeccoes` | `prospeccaoController.criar` | `prospeccaoService.criar` (novo método) | `Prospeccao` | EP | |
-| PATCH | `/prospeccoes/:id` | `prospeccaoController.atualizar` | `prospeccaoService.atualizar` (novo método) | `Prospeccao` | EP | Ex.: mudar status para `descartado` |
+| PATCH | `/prospeccoes/:id` | `prospeccaoController.atualizar` | `prospeccaoService.atualizar` (novo método) | `Prospeccao` | EP | Edição de dados, mudança de status, ou soft-delete via `ativo: false` (decisão de negócio 2026-09-16: excluir nunca é hard-delete) |
+
+Taxonomia de `status_prospeccao` redefinida com o negócio em 2026-09-16: só 3 códigos
+(`em_contato`, `nao_constatada`, `proposta_rejeitada`) — não existe mais um status
+"convertida"; a conversão em si é só `formulario_resposta_id` deixando de ser null.
 
 `vincularProspeccaoAoFormulario` (já implementado) não tem rota própria —
 só é chamado internamente pelo módulo 2.
@@ -94,6 +101,15 @@ só é chamado internamente pelo módulo 2.
 | PATCH | `/contratos/:id` | `contratosController.atualizar` | `contratosService.atualizar` | `Contrato` | EP | Inclui `status_contrato_id`, `numero_chamado_procuradoria`, isenção de taxa (RN-34, validado no model) |
 | POST | `/contratos/:id/renovar` | `contratosController.renovar` | `contratosService.renovar` | `Contrato` | EP | Cria novo registro com `contrato_anterior_id` (RF-07) |
 
+Decisão de negócio (2026-09-16): contratos são gerados manualmente pela equipe fora do
+sistema — `arquivo_nome`/`arquivo_mimetype`/`arquivo_base64` (PNG/PDF em base64, sem storage
+externo) permitem anexar o arquivo assinado no cadastro/edição. `ativo` (soft-delete) segue o
+mesmo padrão de Usuario/PlanoAfiliacao/EspacoFisico — excluir nunca é hard-delete;
+`GET /contratos` só retorna `ativo=true`. No front, o botão "Renovar" não chama mais
+`POST /contratos/:id/renovar` diretamente — ele leva para Comunicações com um rascunho de
+e-mail de renovação pré-preenchido; a criação do contrato renovado em si continua disponível
+via este endpoint.
+
 ## 5. Assinaturas (RN-09, RN-10)
 
 | Método | Rota | Controller | Service | Model(s) | Perfil | Notas |
@@ -105,9 +121,9 @@ só é chamado internamente pelo módulo 2.
 
 | Método | Rota | Controller | Service | Model(s) | Perfil | Notas |
 |---|---|---|---|---|---|---|
-| GET | `/documentos` | `documentosController.listar` | `documentosService.listar` | `Documento` | EP; EA via scope `paraEmpresa` | |
-| POST | `/documentos` | `documentosController.upload` | `documentosService.registrarUpload` | `Documento` | EA (os próprios), EP (em nome de qualquer empresa) | Upload do arquivo em si é infra à parte (fora do escopo desta modelagem) — aqui só a referência é persistida |
-| PATCH | `/documentos/:id` | `documentosController.avaliar` | `documentosService.avaliar` | `Documento` | EP | Aprova/rejeita (RN-15 ⚠️ checklist de obrigatoriedade por edital ainda pendente) |
+| GET | `/documentos` | `documentosController.listar` | `documentosService.listar` | `Documento` | EP; EA via scope `paraEmpresa` | Só retorna `ativo=true` |
+| POST | `/documentos` | `documentosController.upload` | `documentosService.upload` | `Documento` | EA (os próprios), EP (em nome de qualquer empresa) | Desde 2026-09-16 (ADR 0007 §2): aceita upload direto (`arquivo_mimetype`/`arquivo_base64`, PNG/PDF em base64 no banco) como alternativa a `url_arquivo` — precisa de pelo menos um dos dois |
+| PATCH | `/documentos/:id` | `documentosController.atualizar` | `documentosService.atualizar` | `Documento` | EP | Renomeado de `avaliar` em 2026-09-16 — além de aprovar/rejeitar (`status`, RN-15 ⚠️ checklist ainda pendente), também edita `tipo_documento`/`nome_arquivo`/`url_arquivo`/arquivo e `ativo` (RN-37, exclusão) |
 
 ## 7. Financeiro (RF-06, RF-09, RN-16 a RN-19, RN-20 ⚠️, RN-31)
 
@@ -145,11 +161,11 @@ só é chamado internamente pelo módulo 2.
 
 | Método | Rota | Controller | Service | Model(s) | Perfil | Notas |
 |---|---|---|---|---|---|---|
-| POST | `/comunicacoes-email/rascunho` | `comunicacoesController.gerarRascunho` | `emailAgentService` (a implementar) + `comunicacoesService.criarRascunho` (novo) | `ComunicacaoEmail` | EP | `gerado_por_ia: true`; fallback de redação manual se a IA estiver indisponível (ADR 0002) |
-| GET | `/comunicacoes-email` | `comunicacoesController.listar` | `comunicacoesService.listar` (novo) | `ComunicacaoEmail`, `ComunicacaoDestinatario` | EP | Histórico auditável (RN-25) |
-| PATCH | `/comunicacoes-email/:id` | `comunicacoesController.editar` | `comunicacoesService.editarRascunho` (novo) | `ComunicacaoEmail` | EP | Edição humana do texto antes do envio |
-| POST | `/comunicacoes-email/:id/aprovar` | `comunicacoesController.aprovar` | `comunicacoesService.aprovar` (novo) | `ComunicacaoEmail` | EP | Seta `revisado_por_usuario_id`/`revisado_em` — obrigatório antes de enviar (RN-28, já validado no model) |
-| POST | `/comunicacoes-email/:id/enviar` | `comunicacoesController.enviar` | `comunicacoesService.enviar` (novo) | `ComunicacaoEmail` | EP | Só a partir de `status = 'aprovado'`; **nunca** chamado automaticamente pela IA (RN-28) |
+| POST | `/comunicacoes-email/rascunho` | `comunicacoesController.criarRascunho` | `comunicacoesService.criarRascunho` | `ComunicacaoEmail` | EP | `gerado_por_ia: true`. O texto do corpo chega pronto no body — a "geração" hoje é um conjunto de templates locais no front por palavra-chave do assunto (`front/src/lib/sugestaoEmail.ts`, RN-43/ADR 0007 §6), não uma chamada real a `emailAgentService`/Gemini (ADR 0002, `GEMINI_API_KEY` ainda não configurada) |
+| GET | `/comunicacoes-email` | `comunicacoesController.listar` | `comunicacoesService.listar` | `ComunicacaoEmail`, `ComunicacaoDestinatario` | EP | Histórico auditável (RN-25). Só retorna `ativo=true` |
+| PATCH | `/comunicacoes-email/:id` | `comunicacoesController.editar` | `comunicacoesService.editar` | `ComunicacaoEmail` | EP | Edição de `assunto`/`corpo_html` só em `status='rascunho'`; `ativo` (RN-37, exclusão) funciona em qualquer status |
+| POST | `/comunicacoes-email/:id/aprovar` | `comunicacoesController.aprovar` | `comunicacoesService.aprovar` | `ComunicacaoEmail` | EP | Seta `revisado_por_usuario_id`/`revisado_em` — obrigatório antes de enviar (RN-28, já validado no model) |
+| POST | `/comunicacoes-email/:id/enviar` | `comunicacoesController.enviar` | `comunicacoesService.enviar` | `ComunicacaoEmail` | EP | Só a partir de `status = 'aprovado'`; **nunca** chamado automaticamente pela IA (RN-28) |
 
 ## 12. Auditoria (RN-25)
 
@@ -171,6 +187,8 @@ Login em si **não é uma rota deste backend** — é o fluxo do Auth.js
 ---
 
 ## O que já existe hoje vs. o que falta
+
+**Superado** — registro histórico de antes da etapa 6 (a tabela abaixo já não reflete o estado atual: todos os itens listados como "não existe"/"a criar" foram implementados). Mantido só como histórico da ordem de implementação seguida.
 
 | Peça | Status |
 |---|---|

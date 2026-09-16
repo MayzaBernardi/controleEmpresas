@@ -15,7 +15,7 @@ atual.
 | `empresa_id` | UUID (FK → `empresas.id`, `ON DELETE SET NULL`) | não | `null` até a equipe do programa triar a submissão e criar/vincular o cadastro. |
 | `email_contato` | STRING(255) | sim | E-mail informado no formulário. |
 | `payload_respostas` | JSONB | sim | Corpo bruto das respostas do formulário — schema do formulário em si não é fixo no banco. |
-| `status_triagem` | STRING(50) | sim | Default `aguardando`; usado como `triado` no seed. |
+| `status_triagem` | STRING(50) | sim | Default `aguardando`. Só 2 valores usados: `aguardando` (Aguardando preenchimento) e `finalizado` (Finalizado) — simplificado em 2026-09-16 (RN-40/ADR 0007 §4; antes existia também `triado`). Continua `STRING` livre, sem tabela de referência. |
 | `observacoes_triagem` | TEXT | não | Anotação da equipe do programa durante a triagem. |
 | `created_at` / `updated_at` | TIMESTAMP | sim (auto) | |
 
@@ -26,6 +26,8 @@ atual.
 ## Regras de negócio aplicadas
 
 - **RN-04**: o processo de afiliação só é considerado formalmente iniciado quando a empresa preenche este formulário — é o ponto de entrada que grava direto no banco, substituindo o formulário externo.
+- **RN-40** (ADR 0007 §4): `status_triagem` simplificado para 2 valores. Quando a empresa vinculada (`empresa_id`) já tem contrato ativo, o formulário some da listagem de triagem no front (calculado cruzando com `GET /contratos`, sem coluna nova).
+- ⚠️ **RN-41** (ADR 0007 §4): existe uma versão pública desta submissão (`/inscricao` no front, sem autenticação) com aba de benefícios — conteúdo da aba ainda genérico/provisório, pendente do material oficial.
 
 ## Notas
 
