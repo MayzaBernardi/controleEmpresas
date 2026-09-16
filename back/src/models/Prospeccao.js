@@ -49,6 +49,13 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      // Excluir é soft-delete (sai da listagem). Distinto de ter sido "convertida" —
+      // conversão é `formulario_resposta_id` deixando de ser null (RN-36).
+      ativo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
     },
     {
       tableName: 'prospeccoes',

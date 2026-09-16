@@ -1,17 +1,16 @@
 'use strict';
 
 const { Router } = require('express');
-const controller = require('../controllers/documentosController');
+const { listar, upload, atualizar } = require('../controllers/documentosController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = Router();
 
-router.use(authMiddleware);
+router.get('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada'), listar);
 
-router.get('/', requireRole('equipe_programa', 'empresa_afiliada'), asyncHandler(controller.listar));
-router.post('/', requireRole('equipe_programa', 'empresa_afiliada'), asyncHandler(controller.upload));
-router.patch('/:id', requireRole('equipe_programa'), asyncHandler(controller.avaliar));
+router.post('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada'), upload);
+
+router.patch('/:id', authMiddleware, requireRole('equipe_programa'), atualizar);
 
 module.exports = router;

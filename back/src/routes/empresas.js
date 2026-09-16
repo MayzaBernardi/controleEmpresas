@@ -1,20 +1,34 @@
 'use strict';
 
 const { Router } = require('express');
-const controller = require('../controllers/empresasController');
+const {
+  listar,
+  minhaEmpresa,
+  detalhar,
+  criar,
+  atualizar,
+  atualizarStatusProcesso,
+} = require('../controllers/empresasController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = Router();
 
-router.use(authMiddleware);
+router.get('/me', authMiddleware, requireRole('empresa_afiliada'), minhaEmpresa);
 
-router.get('/me', requireRole('empresa_afiliada'), asyncHandler(controller.minhaEmpresa));
-router.get('/', requireRole('equipe_programa', 'contabilidade'), asyncHandler(controller.listar));
-router.get('/:id', requireRole('equipe_programa', 'contabilidade'), asyncHandler(controller.detalhar));
-router.post('/', requireRole('equipe_programa'), asyncHandler(controller.criar));
-router.patch('/:id', requireRole('equipe_programa'), asyncHandler(controller.atualizar));
-router.patch('/:id/status-processo', requireRole('equipe_programa'), asyncHandler(controller.atualizarStatusProcesso));
+router.get('/', authMiddleware, requireRole('equipe_programa', 'contabilidade'), listar);
+
+router.get('/:id', authMiddleware, requireRole('equipe_programa', 'contabilidade'), detalhar);
+
+router.post('/', authMiddleware, requireRole('equipe_programa'), criar);
+
+router.patch('/:id', authMiddleware, requireRole('equipe_programa'), atualizar);
+
+router.patch(
+  '/:id/status-processo',
+  authMiddleware,
+  requireRole('equipe_programa'),
+  atualizarStatusProcesso
+);
 
 module.exports = router;

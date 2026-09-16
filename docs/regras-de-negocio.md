@@ -101,7 +101,23 @@ explicitamente.
 
 - **RN-35** — Uma empresa tem um limite anual de reservas por tipo de espaço compartilhado: sala do ático (`sala_atico`) e auditório (`auditorio`) — 1× por ano cada; coworking — 12× por ano. O limite conta apenas reservas cujo `status` seja diferente de `cancelado`, no ano da `data_reserva` (ou no ano corrente, se a reserva ainda não tem data definida). A validação é feita em **service** (`back/src/services/reservaEspacoService.js`), não em hook do model — antes de criar a reserva, o service verifica a contagem do ano e recusa a criação com mensagem clara se o limite já foi atingido.
 
-- **RN-36** — Quando uma empresa preenche o formulário de inscrição (RN-04) e já existia uma prospecção em aberto (status `identificado`, `material_enviado` ou `aguardando_retorno`) com o mesmo e-mail de contato ou nome de empresa, essa prospecção deve ser vinculada ao novo `formulario_respostas` (campo `formulario_resposta_id`) e seu status deve avançar para `convertido_para_formulario`. Implementado como **service** (`back/src/services/prospeccaoService.js`), chamado explicitamente por quem cria o `FormularioResposta` — não como hook automático do model, pelo mesmo motivo da RN-35 (regra de negócio deve ficar visível e testável na camada de service).
+- **RN-36** — Quando uma empresa preenche o formulário de inscrição (RN-04) e já existia uma prospecção ainda não convertida (`formulario_resposta_id` nulo) e ativa, com o mesmo e-mail de contato ou nome de empresa, essa prospecção deve ser vinculada ao novo `formulario_respostas` (campo `formulario_resposta_id`). Implementado como **service** (`back/src/services/prospeccaoService.js`), chamado explicitamente por quem cria o `FormularioResposta` — não como hook automático do model, pelo mesmo motivo da RN-35 (regra de negócio deve ficar visível e testável na camada de service). **Atualizada em 2026-09-16 (ADR 0007)**: a taxonomia de `status_prospeccao` não tem mais um estado "convertida" (ver RN-39) — a conversão em si é só `formulario_resposta_id` deixando de ser nulo; o status que a prospecção tinha antes não muda, e o critério de elegibilidade para vincular deixou de depender do status (antes filtrava por um conjunto de status "em aberto", agora filtra só por `ativo = true` e `formulario_resposta_id IS NULL`).
+
+## 12. Ajustes de cadastro pós-feedback (ADR 0007, 2026-09-16)
+
+- **RN-37** — Excluir um cadastro de Empresas, Prospecção, Contratos, Documentos ou Comunicações nunca remove a linha do banco: é sempre soft-delete (`ativo = false`). O registro sai das listagens (`GET`) mas continua acessível por id e pode ser reativado (`ativo = true`) pela mesma rota de atualização (`PATCH`). Mesmo padrão já usado em Usuário/Plano de Afiliação/Espaço Físico.
+
+- **RN-38** — Contratos e Documentos podem ter um arquivo (PNG ou PDF) anexado diretamente no cadastro/edição, armazenado em base64 no próprio PostgreSQL (colunas `arquivo_nome`/`arquivo_mimetype`/`arquivo_base64`) — sem storage externo (ADR 0007 §2). Em Documentos, isso é alternativo à URL externa (`url_arquivo`, agora opcional): o registro precisa ter pelo menos um dos dois, nunca é obrigatório ter os dois.
+
+- **RN-39** — `status_prospeccao` tem 3 valores possíveis: `em_contato` (Em contato), `nao_constatada` (Não constatada) e `proposta_rejeitada` (Proposta rejeitada). Não existe um status "convertida" — ver RN-36 atualizada.
+
+- **RN-40** — `formulario_respostas.status_triagem` tem 2 valores possíveis: `aguardando` (Aguardando preenchimento) e `finalizado` (Finalizado). Quando a empresa vinculada a um formulário já tem contrato ativo (vigente, não vencido), o formulário sai da listagem de triagem da equipe do programa — a empresa passa a aparecer normalmente na listagem de Empresas.
+
+- ⚠️ **RN-41** — O formulário de inscrição (RF-01) tem uma versão pública, sem autenticação, acessível por link direto, com uma aba mostrando os benefícios de ser afiliado. **Pendência**: o conteúdo da aba de benefícios ainda é genérico/provisório — aguardando o material oficial da equipe do programa para substituir.
+
+- **RN-42** — Na tela de Contratos, a ação de "renovar" não recria o contrato automaticamente: ela leva a equipe para a tela de Comunicações com um rascunho de e-mail já preenchido, pedindo que a empresa entre em contato para a renovação (o texto varia conforme o contrato já estar vencido — tom de "volte a aproveitar os benefícios" — ou só próximo do vencimento — tom de "está em período de renovação"). A criação de fato do contrato renovado continua existindo como ação separada.
+
+- **RN-43** — A sugestão de corpo de e-mail a partir do assunto, na criação de rascunho em Comunicações, é gerada por um conjunto de templates locais por palavra-chave — não por um modelo de IA real (a integração com um provedor de LLM, prevista na RN-28/ADR 0002, ainda não tem uma chave de API configurada). O rascunho continua marcado `gerado_por_ia: true` e passa pela mesma revisão humana obrigatória antes de aprovar/enviar (RN-28 não muda).
 
 ## Pendências abertas (não implementar até confirmar)
 
@@ -116,3 +132,4 @@ Lista de tudo marcado com ⚠️ acima, para facilitar o acompanhamento:
 7. Renovação automática vs. manual (RN-22).
 8. Antecedência do aviso de vencimento de vigência (RN-23).
 9. Caixa de e-mail institucional a ser usada pelo sistema (RN-26).
+10. Conteúdo real da aba de benefícios de afiliação no formulário público (RN-41) — hoje é texto genérico/provisório.

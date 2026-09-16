@@ -45,6 +45,13 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      // Excluir é soft-delete (sai da listagem) — funciona em qualquer status, diferente
+      // de editar (assunto/corpo_html), que só é permitido enquanto for rascunho.
+      ativo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
     },
     {
       tableName: 'comunicacoes_email',

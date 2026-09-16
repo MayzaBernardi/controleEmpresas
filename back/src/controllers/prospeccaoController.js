@@ -1,20 +1,56 @@
 'use strict';
 
 const prospeccaoService = require('../services/prospeccaoService');
+const ApiError = require('../utils/ApiError');
 
-async function listar(req, res) {
-  const prospeccoes = await prospeccaoService.listar();
-  res.json(prospeccoes);
-}
+exports.listar = async (req, res) => {
+  try {
+    const prospeccoes = await prospeccaoService.listar();
+    return res.json(prospeccoes);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function criar(req, res) {
-  const prospeccao = await prospeccaoService.criar(req.body);
-  res.status(201).json(prospeccao);
-}
+exports.listarStatusDisponiveis = async (req, res) => {
+  try {
+    const status = await prospeccaoService.listarStatusDisponiveis();
+    return res.json(status);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function atualizar(req, res) {
-  const prospeccao = await prospeccaoService.atualizar(req.params.id, req.body);
-  res.json(prospeccao);
-}
+exports.criar = async (req, res) => {
+  try {
+    const prospeccao = await prospeccaoService.criar(req.body);
+    return res.status(201).json(prospeccao);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-module.exports = { listar, criar, atualizar };
+exports.atualizar = async (req, res) => {
+  try {
+    const prospeccao = await prospeccaoService.atualizar(req.params.id, req.body);
+    return res.json(prospeccao);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

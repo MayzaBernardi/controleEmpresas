@@ -1,20 +1,43 @@
 'use strict';
 
 const documentosService = require('../services/documentosService');
+const ApiError = require('../utils/ApiError');
 
-async function listar(req, res) {
-  const documentos = await documentosService.listar({ usuario: req.user });
-  res.json(documentos);
-}
+exports.listar = async (req, res) => {
+  try {
+    const documentos = await documentosService.listar({ usuario: req.user });
+    return res.json(documentos);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function upload(req, res) {
-  const documento = await documentosService.upload(req.body, { usuario: req.user });
-  res.status(201).json(documento);
-}
+exports.upload = async (req, res) => {
+  try {
+    const documento = await documentosService.upload(req.body, { usuario: req.user });
+    return res.status(201).json(documento);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function avaliar(req, res) {
-  const documento = await documentosService.avaliar(req.params.id, req.body);
-  res.json(documento);
-}
-
-module.exports = { listar, upload, avaliar };
+exports.atualizar = async (req, res) => {
+  try {
+    const documento = await documentosService.atualizar(req.params.id, req.body);
+    return res.json(documento);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

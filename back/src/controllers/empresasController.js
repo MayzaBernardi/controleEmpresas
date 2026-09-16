@@ -1,35 +1,85 @@
 'use strict';
 
 const empresasService = require('../services/empresasService');
+const ApiError = require('../utils/ApiError');
 
-async function listar(req, res) {
-  const empresas = await empresasService.listar();
-  res.json(empresas);
-}
+exports.listar = async (req, res) => {
+  try {
+    const empresas = await empresasService.listar();
+    return res.json(empresas);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function minhaEmpresa(req, res) {
-  const empresa = await empresasService.buscarMinhaEmpresa(req.user.empresaId);
-  res.json(empresa);
-}
+exports.minhaEmpresa = async (req, res) => {
+  try {
+    const empresa = await empresasService.buscarMinhaEmpresa(req.user.empresaId);
+    return res.json(empresa);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function detalhar(req, res) {
-  const empresa = await empresasService.buscarPorId(req.params.id);
-  res.json(empresa);
-}
+exports.detalhar = async (req, res) => {
+  try {
+    const empresa = await empresasService.buscarPorId(req.params.id);
+    return res.json(empresa);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function criar(req, res) {
-  const empresa = await empresasService.criar(req.body);
-  res.status(201).json(empresa);
-}
+exports.criar = async (req, res) => {
+  try {
+    const empresa = await empresasService.criar(req.body);
+    return res.status(201).json(empresa);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function atualizar(req, res) {
-  const empresa = await empresasService.atualizar(req.params.id, req.body);
-  res.json(empresa);
-}
+exports.atualizar = async (req, res) => {
+  try {
+    const empresa = await empresasService.atualizar(req.params.id, req.body);
+    return res.json(empresa);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
 
-async function atualizarStatusProcesso(req, res) {
-  const empresa = await empresasService.atualizarStatusProcesso(req.params.id, req.body.status_processo_id ?? null);
-  res.json(empresa);
-}
-
-module.exports = { listar, minhaEmpresa, detalhar, criar, atualizar, atualizarStatusProcesso };
+exports.atualizarStatusProcesso = async (req, res) => {
+  try {
+    const empresa = await empresasService.atualizarStatusProcesso(
+      req.params.id,
+      req.body.status_processo_id ?? null
+    );
+    return res.json(empresa);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
