@@ -2,9 +2,11 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { GrStatusGood } from "react-icons/gr";
+import { IoIosSend } from "react-icons/io";
 import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
-import { DangerButton, ErrorText, Field, Input, PrimaryButton, SecondaryButton, TextArea } from "@/components/form";
+import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, SecondaryButton, TextArea } from "@/components/form";
 import { formatarData } from "@/lib/format";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
@@ -32,6 +34,12 @@ const STATUS_VARIANTE = {
   enviado: "secondary",
   falha: "danger",
 } as const;
+
+// Cores pedidas pelo usuário (2026-09-16) para os botões de "Aprovar"/"Enviar" — fora da
+// paleta de marca, por isso não usam PrimaryButton (que traria bg-primary/hover verde
+// junto, competindo em especificidade com essas cores customizadas).
+const BOTAO_ACAO_CLASSES =
+  "inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors disabled:opacity-60";
 
 function LinhaComunicacao({
   comunicacao,
@@ -107,7 +115,7 @@ function LinhaComunicacao({
 
   return (
     <>
-      <tr className="border-b border-neutral-100 last:border-0">
+      <tr className="border-b border-secondary-subtle-border last:border-0">
         <td className="px-4 py-3">
           <p className="font-medium text-foreground">{comunicacao.assunto}</p>
           <p className="text-xs text-neutral-600">{comunicacao.destinatarios.length} destinatário(s)</p>
@@ -118,23 +126,35 @@ function LinhaComunicacao({
             {comunicacao.gerado_por_ia && <Badge variante="neutral">Rascunho assistido</Badge>}
           </div>
         </td>
-        <td className="px-4 py-3 text-neutral-800">{formatarData(comunicacao.data_envio)}</td>
+        <td className="px-4 py-3 text-foreground">{formatarData(comunicacao.data_envio)}</td>
         <td className="px-4 py-3 text-right">
           <div className="flex flex-wrap justify-end gap-2">
             {comunicacao.status === "rascunho" && (
               <>
-                <SecondaryButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+                <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
                   {editando ? "Cancelar" : "Editar"}
-                </SecondaryButton>
-                <PrimaryButton type="button" onClick={aprovar} disabled={processando} className="px-3 py-1.5 text-xs">
+                </EditButton>
+                <button
+                  type="button"
+                  onClick={aprovar}
+                  disabled={processando}
+                  className={`${BOTAO_ACAO_CLASSES} bg-[#F58F1B] hover:bg-[#d97b0f]`}
+                >
+                  <GrStatusGood className="h-3.5 w-3.5" />
                   Aprovar
-                </PrimaryButton>
+                </button>
               </>
             )}
             {comunicacao.status === "aprovado" && (
-              <PrimaryButton type="button" onClick={enviar} disabled={processando} className="px-3 py-1.5 text-xs">
+              <button
+                type="button"
+                onClick={enviar}
+                disabled={processando}
+                className={`${BOTAO_ACAO_CLASSES} bg-[#909D9D] hover:bg-[#7c8888]`}
+              >
+                <IoIosSend className="h-3.5 w-3.5" />
                 Enviar
-              </PrimaryButton>
+              </button>
             )}
             <DangerButton type="button" onClick={excluir} disabled={processando}>
               Excluir
@@ -143,7 +163,7 @@ function LinhaComunicacao({
         </td>
       </tr>
       {editando && (
-        <tr className="border-b border-neutral-100 bg-neutral-100/30">
+        <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
           <td colSpan={4} className="px-4 py-4">
             <Field label="Assunto" htmlFor={`assunto-${comunicacao.id}`}>
               <Input id={`assunto-${comunicacao.id}`} value={assunto} onChange={(e) => setAssunto(e.target.value)} />
@@ -185,16 +205,36 @@ function ComunicacoesConteudo() {
   const [destinatariosAbertos, setDestinatariosAbertos] = useState(Boolean(empresaIdPreenchida));
   const [enviando, setEnviando] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
+  const [sugerindoCorpo, setSugerindoCorpo] = useState(false);
 
   function alternarDestinatario(id: string) {
     setEmpresaIds((atual) => (atual.includes(id) ? atual.filter((e) => e !== id) : [...atual, id]));
+  }
+
+  // Pede ao Gemini (POST /comunicacoes-email/sugestao-corpo) um corpo a partir do assunto. Se a
+  // chamada falhar por qualquer motivo (rede, Gemini fora do ar, etc.), cai para o template
+  // local em vez de deixar o campo vazio ou quebrar a tela.
+  async function gerarSugestaoCorpo(assuntoAlvo: string) {
+    setSugerindoCorpo(true);
+    try {
+      const resultado = await apiFetch<{ corpo_html: string }>("/comunicacoes-email/sugestao-corpo", {
+        method: "POST",
+        token,
+        body: { assunto: assuntoAlvo },
+      });
+      setCorpoHtml(resultado.corpo_html);
+    } catch {
+      setCorpoHtml(sugerirCorpoEmail(assuntoAlvo));
+    } finally {
+      setSugerindoCorpo(false);
+    }
   }
 
   function handleAssuntoBlur() {
     // Sugere o corpo automaticamente na primeira vez que o título é preenchido — nunca
     // sobrescreve texto que a pessoa já editou manualmente.
     if (assunto.trim() && !corpoTocadoManualmente) {
-      setCorpoHtml(sugerirCorpoEmail(assunto));
+      void gerarSugestaoCorpo(assunto);
     }
   }
 
@@ -230,7 +270,7 @@ function ComunicacoesConteudo() {
     <div>
       <PageHeader
         title="Comunicações"
-        subtitle="Rascunho → aprovação humana → envio. Nenhum e-mail sai sem revisão (RN-28)."
+        subtitle="Rascunho → aprovação → envio."
         action={
           <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
             {formAberto ? "Cancelar" : "Novo rascunho"}
@@ -263,10 +303,11 @@ function ComunicacoesConteudo() {
           </Field>
           <button
             type="button"
-            onClick={() => setCorpoHtml(sugerirCorpoEmail(assunto || "assunto do e-mail"))}
-            className="mt-1.5 text-xs font-medium text-secondary-foreground hover:underline"
+            onClick={() => gerarSugestaoCorpo(assunto || "assunto do e-mail")}
+            disabled={sugerindoCorpo}
+            className="mt-1.5 text-xs font-medium text-secondary-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Sugerir corpo a partir do assunto
+            {sugerindoCorpo ? "Gerando sugestão…" : "Sugerir corpo a partir do assunto"}
           </button>
 
           <div className="mt-4">
@@ -309,14 +350,14 @@ function ComunicacoesConteudo() {
       )}
 
       {comunicacoes && comunicacoes.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Assunto</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Enviado em</th>
-                <th className="px-4 py-3 font-medium" />
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Assunto</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold">Enviado em</th>
+                <th className="px-4 py-3 font-bold" />
               </tr>
             </thead>
             <tbody>

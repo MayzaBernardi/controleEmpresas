@@ -3,6 +3,7 @@
 const { Op } = require('sequelize');
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const STATUS_PROSPECCAO_PADRAO = 'em_contato';
 
@@ -122,7 +123,7 @@ async function validarStatusProspeccaoId(statusProspeccaoId, { models } = {}) {
  * no body, usa o id de codigo="em_contato" (buscado, nunca chumbado); se vier, valida
  * que existe em status_prospeccao.
  */
-async function criar(body, { models } = {}) {
+async function criar(body, { usuario, models } = {}) {
   const db = models || require('../models');
   const dados = somenteCamposPermitidos(body || {}, CAMPOS_CRIACAO);
 
@@ -136,7 +137,16 @@ async function criar(body, { models } = {}) {
     await validarStatusProspeccaoId(dados.status_prospeccao_id, { models: db });
   }
 
-  return wrapSequelizeErrors(db.Prospeccao.create(dados));
+  const prospeccao = await wrapSequelizeErrors(db.Prospeccao.create(dados));
+  await auditoriaService.registrar({
+    entidade: 'prospeccoes',
+    entidadeId: prospeccao.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: prospeccao.toJSON(),
+    models: db,
+  });
+  return prospeccao;
 }
 
 /**
@@ -144,7 +154,7 @@ async function criar(body, { models } = {}) {
  * existente. Sem isolamento por empresa (ADR 0005 §3: é dado interno da equipe, anterior a
  * existir uma Empresa).
  */
-async function atualizar(id, body, { models } = {}) {
+async function atualizar(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const prospeccao = await db.Prospeccao.findByPk(id);
   if (!prospeccao) {
@@ -157,8 +167,22 @@ async function atualizar(id, body, { models } = {}) {
     await validarStatusProspeccaoId(dados.status_prospeccao_id, { models: db });
   }
 
+  const dadosAnteriores = {};
+  for (const campo of Object.keys(dados)) {
+    dadosAnteriores[campo] = prospeccao[campo];
+  }
   Object.assign(prospeccao, dados);
-  return wrapSequelizeErrors(prospeccao.save());
+  const resultado = await wrapSequelizeErrors(prospeccao.save());
+  await auditoriaService.registrar({
+    entidade: 'prospeccoes',
+    entidadeId: prospeccao.id,
+    acao: dados.ativo === false ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: dados,
+    models: db,
+  });
+  return resultado;
 }
 
 // Lookup pro front montar o seletor de status na edição — sem isso não há como saber os

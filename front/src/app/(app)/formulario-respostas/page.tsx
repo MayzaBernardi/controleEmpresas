@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
@@ -18,14 +18,9 @@ interface FormularioResposta {
   createdAt: string;
 }
 
-interface Contrato {
-  empresa_id: string;
-  estaVencido: boolean;
-}
-
 const STATUS_ROTULO: Record<string, string> = {
-  aguardando: "Aguardando preenchimento",
-  finalizado: "Finalizado",
+  aguardando: "Enviado",
+  finalizado: "Preenchimento finalizado",
 };
 
 function nomeDaEmpresa(formulario: FormularioResposta) {
@@ -34,26 +29,10 @@ function nomeDaEmpresa(formulario: FormularioResposta) {
 }
 
 export default function FormularioRespostasPage() {
-  const { dados: formulariosTodos, erro } = useApiResource<FormularioResposta[]>("/formulario-respostas");
-  const { dados: contratos } = useApiResource<Contrato[]>("/contratos");
+  // RN-42: o back já remove da resposta os formulários cuja empresa (por CNPJ) tem
+  // contrato vigente dentro da data de validade — não precisa refiltrar aqui.
+  const { dados: formularios, erro } = useApiResource<FormularioResposta[]>("/formulario-respostas");
   const [linkCopiado, setLinkCopiado] = useState(false);
-
-  // Uma vez que a empresa vinculada tem contrato ativo (vigente, não vencido), o formulário
-  // sai daqui — a empresa passa a aparecer na listagem de Empresas normalmente.
-  const empresasComContratoAtivo = useMemo(() => {
-    const set = new Set<string>();
-    for (const contrato of contratos ?? []) {
-      if (!contrato.estaVencido) set.add(contrato.empresa_id);
-    }
-    return set;
-  }, [contratos]);
-
-  const formularios = useMemo(() => {
-    if (!formulariosTodos) return null;
-    return formulariosTodos.filter(
-      (formulario) => !formulario.empresa_id || !empresasComContratoAtivo.has(formulario.empresa_id)
-    );
-  }, [formulariosTodos, empresasComContratoAtivo]);
 
   async function copiarLink() {
     const link = `${window.location.origin}/inscricao`;
@@ -70,7 +49,7 @@ export default function FormularioRespostasPage() {
     <div>
       <PageHeader
         title="Formulários de inscrição"
-        subtitle="Submissões do formulário público de afiliação, para triagem (RF-01)."
+        subtitle="Submissões do formulário público de afiliação, para triagem."
         action={
           <div className="flex items-center gap-2">
             {formularios && (
@@ -92,19 +71,19 @@ export default function FormularioRespostasPage() {
       )}
 
       {formularios && formularios.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">E-mail de contato</th>
-                <th className="px-4 py-3 font-medium">Recebido em</th>
-                <th className="px-4 py-3 font-medium">Triagem</th>
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">E-mail de contato</th>
+                <th className="px-4 py-3 font-bold">Recebido em</th>
+                <th className="px-4 py-3 font-bold">Triagem</th>
               </tr>
             </thead>
             <tbody>
               {formularios.map((formulario) => (
-                <tr key={formulario.id} className="border-b border-neutral-100 last:border-0">
+                <tr key={formulario.id} className="border-b border-secondary-subtle-border last:border-0">
                   <td className="px-4 py-3">
                     <Link
                       href={`/formulario-respostas/${formulario.id}`}
@@ -113,8 +92,8 @@ export default function FormularioRespostasPage() {
                       {nomeDaEmpresa(formulario)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-neutral-800">{formulario.email_contato}</td>
-                  <td className="px-4 py-3 text-neutral-800">{formatarData(formulario.createdAt)}</td>
+                  <td className="px-4 py-3 text-foreground">{formulario.email_contato}</td>
+                  <td className="px-4 py-3 text-foreground">{formatarData(formulario.createdAt)}</td>
                   <td className="px-4 py-3">
                     <Badge variante={formulario.status_triagem === "aguardando" ? "warning" : "secondary"}>
                       {STATUS_ROTULO[formulario.status_triagem] ?? formulario.status_triagem}

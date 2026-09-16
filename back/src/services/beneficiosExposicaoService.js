@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CAMPOS_ATUALIZACAO = ['telao_ativo', 'marca_site_ativo', 'observacoes'];
 
@@ -42,17 +43,31 @@ async function buscarPorEmpresa(empresaId, { usuario, models } = {}) {
   return beneficio;
 }
 
-async function upsert(empresaId, body, { models } = {}) {
+async function upsert(empresaId, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const dados = somenteCamposPermitidos(body, CAMPOS_ATUALIZACAO);
 
-  const [beneficio] = await db.BeneficioExposicao.findOrCreate({
+  const [beneficio, criado] = await db.BeneficioExposicao.findOrCreate({
     where: { empresa_id: empresaId },
     defaults: { empresa_id: empresaId, ...dados, atualizado_em: new Date() },
   });
 
+  const dadosAnteriores = criado
+    ? null
+    : { telao_ativo: beneficio.telao_ativo, marca_site_ativo: beneficio.marca_site_ativo, observacoes: beneficio.observacoes };
+
   Object.assign(beneficio, dados, { atualizado_em: new Date() });
-  return wrapSequelizeErrors(beneficio.save());
+  const resultado = await wrapSequelizeErrors(beneficio.save());
+  await auditoriaService.registrar({
+    entidade: 'beneficios_exposicao',
+    entidadeId: beneficio.id,
+    acao: criado ? 'create' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: criado ? beneficio.toJSON() : dados,
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = { buscarPorEmpresa, upsert };

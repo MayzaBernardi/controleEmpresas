@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CAMPOS_ATUALIZACAO = ['status', 'data_assinatura', 'observacoes', 'nome_signatario', 'email_signatario'];
 
@@ -30,15 +31,29 @@ async function listarPorContrato(contratoId, { usuario, models } = {}) {
   return db.Assinatura.findAll({ where: { contrato_id: contratoId } });
 }
 
-async function atualizar(id, body, { models } = {}) {
+async function atualizar(id, body, { usuario, models } = {}) {
   const db = models || require('../models');
   const assinatura = await db.Assinatura.findByPk(id);
   if (!assinatura) {
     throw new ApiError(404, 'Assinatura não encontrada.');
   }
   const dados = somenteCamposPermitidos(body, CAMPOS_ATUALIZACAO);
+  const dadosAnteriores = {};
+  for (const campo of Object.keys(dados)) {
+    dadosAnteriores[campo] = assinatura[campo];
+  }
   Object.assign(assinatura, dados);
-  return wrapSequelizeErrors(assinatura.save());
+  const resultado = await wrapSequelizeErrors(assinatura.save());
+  await auditoriaService.registrar({
+    entidade: 'assinaturas',
+    entidadeId: assinatura.id,
+    acao: 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: dados,
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {

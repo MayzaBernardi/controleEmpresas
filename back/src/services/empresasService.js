@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CAMPOS_CRIACAO = [
   'razao_social',
@@ -58,22 +59,44 @@ async function buscarMinhaEmpresa(empresaId, { models } = {}) {
   return buscarPorId(empresaId, { models });
 }
 
-async function criar(body, { models } = {}) {
+async function criar(body, { usuario, models } = {}) {
   const db = models || require('../models');
   const dados = somenteCamposPermitidos(body, CAMPOS_CRIACAO);
-  return wrapSequelizeErrors(db.Empresa.create(dados));
+  const empresa = await wrapSequelizeErrors(db.Empresa.create(dados));
+  await auditoriaService.registrar({
+    entidade: 'empresas',
+    entidadeId: empresa.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: empresa.toJSON(),
+    models: db,
+  });
+  return empresa;
 }
 
-async function atualizar(id, body, { models } = {}) {
+async function atualizar(id, body, { usuario, models } = {}) {
   const empresa = await buscarPorId(id, { models });
   const dados = somenteCamposPermitidos(body, CAMPOS_ATUALIZACAO);
+  const dadosAnteriores = {};
+  for (const campo of Object.keys(dados)) {
+    dadosAnteriores[campo] = empresa[campo];
+  }
   Object.assign(empresa, dados);
-  return wrapSequelizeErrors(empresa.save());
+  const resultado = await wrapSequelizeErrors(empresa.save());
+  await auditoriaService.registrar({
+    entidade: 'empresas',
+    entidadeId: empresa.id,
+    acao: dados.ativo === false ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: dados,
+  });
+  return resultado;
 }
 
 // ADR 0005 §4 / RN-06 (⚠️ pendente): só move a FK nova (status_processo_id); o campo de
 // texto legado (status_processo) não é tocado por este fluxo.
-async function atualizarStatusProcesso(id, statusProcessoId, { models } = {}) {
+async function atualizarStatusProcesso(id, statusProcessoId, { usuario, models } = {}) {
   const db = models || require('../models');
   const empresa = await buscarPorId(id, { models });
 
@@ -84,8 +107,19 @@ async function atualizarStatusProcesso(id, statusProcessoId, { models } = {}) {
     }
   }
 
+  const statusProcessoIdAnterior = empresa.status_processo_id;
   empresa.status_processo_id = statusProcessoId;
-  return empresa.save();
+  const resultado = await empresa.save();
+  await auditoriaService.registrar({
+    entidade: 'empresas',
+    entidadeId: empresa.id,
+    acao: 'update',
+    usuario,
+    dadosAnteriores: { status_processo_id: statusProcessoIdAnterior },
+    dadosNovos: { status_processo_id: statusProcessoId },
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {

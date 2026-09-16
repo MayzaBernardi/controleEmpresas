@@ -44,7 +44,7 @@ exports.detalhar = async (req, res) => {
 
 exports.triar = async (req, res) => {
   try {
-    const formularioResposta = await formularioService.triar(req.params.id, req.body);
+    const formularioResposta = await formularioService.triar(req.params.id, req.body, { usuario: req.user });
     return res.json(formularioResposta);
   } catch (error) {
     if (error instanceof ApiError) {

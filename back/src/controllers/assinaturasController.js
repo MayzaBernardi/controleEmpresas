@@ -20,7 +20,7 @@ exports.listarPorContrato = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const assinatura = await assinaturasService.atualizar(req.params.id, req.body);
+    const assinatura = await assinaturasService.atualizar(req.params.id, req.body, { usuario: req.user });
     return res.json(assinatura);
   } catch (error) {
     if (error instanceof ApiError) {

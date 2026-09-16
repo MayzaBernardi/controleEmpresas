@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
-import { ErrorText, PrimaryButton, Select, SecondaryButton } from "@/components/form";
+import { EditButton, ErrorText, PrimaryButton, Select, SecondaryButton } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
 
@@ -77,7 +77,7 @@ function LinhaUsuario({
   }
 
   return (
-    <tr className="border-b border-neutral-100 last:border-0 align-top">
+    <tr className="border-b border-secondary-subtle-border last:border-0 align-top">
       <td className="px-4 py-3">
         <p className="font-medium text-foreground">{usuario.nome}</p>
         <p className="text-xs text-neutral-600">{usuario.email}</p>
@@ -124,9 +124,9 @@ function LinhaUsuario({
             </PrimaryButton>
           </div>
         ) : (
-          <SecondaryButton type="button" onClick={() => setEditando(true)} className="px-3 py-1.5 text-xs">
+          <EditButton type="button" onClick={() => setEditando(true)} className="px-3 py-1.5 text-xs">
             Editar
-          </SecondaryButton>
+          </EditButton>
         )}
       </td>
     </tr>
@@ -139,21 +139,21 @@ export default function UsuariosPage() {
 
   return (
     <div>
-      <PageHeader title="Usuários" subtitle="Gestão de quem tem acesso ao sistema (RN-01, RN-02)." />
+      <PageHeader title="Usuários" subtitle="Gestão de quem tem acesso ao sistema." />
 
       {erro && <ErrorText>{erro}</ErrorText>}
       {!usuarios && !erro && <p className="text-sm text-neutral-600">Carregando…</p>}
       {usuarios && usuarios.length === 0 && <p className="text-sm text-neutral-600">Nenhum usuário cadastrado.</p>}
 
       {usuarios && usuarios.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Usuário</th>
-                <th className="px-4 py-3 font-medium">Papel</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium" />
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Usuário</th>
+                <th className="px-4 py-3 font-bold">Papel</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold" />
               </tr>
             </thead>
             <tbody>

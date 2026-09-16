@@ -1987,6 +1987,55 @@
       "name": "11. Comunicações / E-mail",
       "item": [
         {
+          "name": "Sugerir corpo do e-mail com IA (Gemini)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenEquipePrograma}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comunicacoes-email/sugestao-corpo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comunicacoes-email",
+                "sugestao-corpo"
+              ]
+            },
+            "description": "RF-04: gera um corpo de e-mail em HTML (só <p>) a partir apenas do assunto, chamando a API do Gemini de verdade (emailAgentService.js + GEMINI_API_KEY, adicionado em 2026-09-16). Não persiste nada — quem chama decide se usa o resultado no corpo_html de \"Criar rascunho\" a seguir. 400 se faltar assunto; 503 se GEMINI_API_KEY não estiver configurada; 502 se a chamada ao Gemini falhar (mensagem genérica — detalhe fica só no log do servidor). O front usa este endpoint automaticamente ao sair do campo Assunto, com fallback para um template local (front/src/lib/sugestaoEmail.ts) se a chamada falhar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assunto\": \"Vencimento do contrato de afiliação\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"retornou corpo_html\", () => pm.expect(json.corpo_html).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Criar rascunho de e-mail (RF-04 / RN-28)",
           "request": {
             "method": "POST",
@@ -2010,7 +2059,7 @@
                 "rascunho"
               ]
             },
-            "description": "gerado_por_ia é sempre marcado true; a integração real com @google/genai ainda não existe (emailAgentService.js vazio) — aqui o corpo já vem pronto no request, simulando o rascunho.",
+            "description": "gerado_por_ia é sempre marcado true. O corpo já vem pronto no request — quem gera o texto é responsabilidade de outra camada: use \"Sugerir corpo do e-mail com IA (Gemini)\" antes desta requisição para obter um corpo_html gerado de verdade pelo Gemini (emailAgentService.js), ou escreva o texto manualmente.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"assunto\": \"Boas-vindas ao Pollen Parque\",\n  \"corpo_html\": \"<p>Olá! Seja bem-vindo(a) ao programa de afiliados.</p>\",\n  \"observacoes_ia\": \"Rascunho gerado a partir do template de boas-vindas.\",\n  \"empresaIds\": [\n    \"{{empresaId}}\"\n  ]\n}",

@@ -20,7 +20,7 @@ exports.detalhar = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const beneficio = await beneficiosExposicaoService.upsert(req.params.empresaId, req.body);
+    const beneficio = await beneficiosExposicaoService.upsert(req.params.empresaId, req.body, { usuario: req.user });
     return res.json(beneficio);
   } catch (error) {
     if (error instanceof ApiError) {

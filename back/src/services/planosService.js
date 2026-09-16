@@ -2,6 +2,7 @@
 
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 const CAMPOS_ATUALIZACAO = ['nome', 'valor', 'ativo'];
 
@@ -31,11 +32,26 @@ async function buscarPorId(id, { models } = {}) {
   return plano;
 }
 
-async function atualizar(id, body, { models } = {}) {
-  const plano = await buscarPorId(id, { models });
+async function atualizar(id, body, { usuario, models } = {}) {
+  const db = models || require('../models');
+  const plano = await buscarPorId(id, { models: db });
   const dados = somenteCamposPermitidos(body, CAMPOS_ATUALIZACAO);
+  const dadosAnteriores = {};
+  for (const campo of Object.keys(dados)) {
+    dadosAnteriores[campo] = plano[campo];
+  }
   Object.assign(plano, dados);
-  return wrapSequelizeErrors(plano.save());
+  const resultado = await wrapSequelizeErrors(plano.save());
+  await auditoriaService.registrar({
+    entidade: 'planos_afiliacao',
+    entidadeId: plano.id,
+    acao: dados.ativo === false ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: dados,
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {
