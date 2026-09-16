@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { FaArrowAltCircleDown } from "react-icons/fa";
+import { GrStatusGood } from "react-icons/gr";
 import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
-import { DangerButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea } from "@/components/form";
+import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
 import { abrirArquivoBase64, lerArquivoComoBase64 } from "@/lib/arquivo";
@@ -154,9 +156,9 @@ function LinhaDocumento({
 
   return (
     <>
-      <tr className="border-b border-neutral-100 last:border-0">
+      <tr className="border-b border-secondary-subtle-border last:border-0">
         <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(documento.empresa_id)}</td>
-        <td className="px-4 py-3 text-neutral-800">
+        <td className="px-4 py-3 text-foreground">
           {TIPOS_DOCUMENTO.find((t) => t.valor === documento.tipo_documento)?.rotulo ?? documento.tipo_documento}
         </td>
         <td className="px-4 py-3">
@@ -185,17 +187,29 @@ function LinhaDocumento({
           <div className="flex flex-wrap justify-end gap-2">
             {documento.status === "pendente" && (
               <>
-                <SecondaryButton type="button" onClick={() => avaliar("aprovado")} disabled={processando} className="px-3 py-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => avaliar("aprovado")}
+                  disabled={processando}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#F58F1B] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#d97b0f] disabled:opacity-60"
+                >
+                  <GrStatusGood className="h-3.5 w-3.5" />
                   Aprovar
-                </SecondaryButton>
-                <SecondaryButton type="button" onClick={() => avaliar("rejeitado")} disabled={processando} className="px-3 py-1.5 text-xs">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => avaliar("rejeitado")}
+                  disabled={processando}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                >
+                  <FaArrowAltCircleDown className="h-3.5 w-3.5" />
                   Rejeitar
-                </SecondaryButton>
+                </button>
               </>
             )}
-            <SecondaryButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+            <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
               {editando ? "Cancelar" : "Editar"}
-            </SecondaryButton>
+            </EditButton>
             <DangerButton type="button" onClick={excluir} disabled={processando}>
               Excluir
             </DangerButton>
@@ -203,7 +217,7 @@ function LinhaDocumento({
         </td>
       </tr>
       {editando && (
-        <tr className="border-b border-neutral-100 bg-neutral-100/30">
+        <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
           <td colSpan={5} className="px-4 py-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Tipo de documento" htmlFor={`tipo-${documento.id}`}>
@@ -329,7 +343,7 @@ export default function DocumentosPage() {
     <div>
       <PageHeader
         title="Documentos"
-        subtitle="Documentos exigidos pelo edital, vinculados às empresas (RF-05)."
+        subtitle="Documentos exigidos pelo edital, vinculados às empresas."
         action={
           <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
             {formAberto ? "Cancelar" : "Registrar documento"}
@@ -422,15 +436,15 @@ export default function DocumentosPage() {
       )}
 
       {documentos && documentos.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
-                <th className="px-4 py-3 font-medium">Arquivo</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium" />
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">Tipo</th>
+                <th className="px-4 py-3 font-bold">Arquivo</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold" />
               </tr>
             </thead>
             <tbody>

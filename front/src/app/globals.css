@@ -1,35 +1,40 @@
 @import "tailwindcss";
 
 /*
- * Design tokens extraídos do site institucional (pollenparque.com.br/wp-content/themes/pollen),
- * a partir das variáveis Bootstrap do tema deles (--bs-primary, --bs-secondary etc.), em
- * 2026-09-16. As fontes de marca (Helvetica Now Text / Praktika Rounded) são comerciais e
- * hospedadas no domínio deles — usamos Inter/Baloo 2 (Google Fonts) como equivalentes livres,
- * ver front/CLAUDE.md.
+ * Design tokens (2026-09-16, redesenho v2): painel escuro fixo (referência de design
+ * fornecida pelo negócio) — deixou de acompanhar prefers-color-scheme de propósito, é o
+ * único tema do painel autenticado agora. Login continua com fundo preto fixo à parte (não
+ * usa estes tokens, ver comentário em front/src/app/login/page.tsx). Fontes de marca
+ * (Helvetica Now Text / Praktika Rounded) são comerciais e hospedadas no domínio
+ * institucional — usamos Inter/Baloo 2 (Google Fonts) como equivalentes livres, ver
+ * front/CLAUDE.md.
  *
- * Tokens que mudam entre claro/escuro usam nomes "brand-*" próprios em :root, só ligados ao
- * token Tailwind (--color-*) via @theme inline — nomes iguais nos dois lados criam uma
- * referência circular (--color-x: var(--color-x)), que o navegador trata como inválida.
+ * Mantido o esquema de indireção "brand-*" em :root -> @theme inline mesmo sem variação de
+ * tema no momento, pra não ter que tocar em toda classe Tailwind (bg-neutral-100,
+ * text-secondary-foreground etc.) já usada nas páginas caso o produto peça um tema claro de
+ * volta no futuro.
  */
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
+  --background: #3f4142;
+  --foreground: #f4f6f8;
 
-  --brand-primary: #000000;
-  --brand-primary-foreground: #ffffff;
-  --brand-secondary-foreground: #53663a;
-  --brand-secondary-subtle: #f5ffe9;
-  --brand-secondary-subtle-border: #ecffd3;
+  --brand-primary: #22c55e;
+  --brand-primary-foreground: #06170d;
+  --brand-secondary-foreground: #4ade80;
+  --brand-secondary-subtle: rgba(34, 197, 94, 0.12);
+  --brand-secondary-subtle-border: rgba(34, 197, 94, 0.35);
+
+  --brand-neutral-100: #303236;
+  --brand-neutral-600: #8b93a3;
+  --brand-neutral-800: #cbd2dc;
 }
 
 @theme {
-  /* Sem variação entre claro/escuro: valor direto, sem indireção. */
-  --color-secondary: #cfff92;
-  --color-neutral-100: #ededed;
-  --color-neutral-600: #757575;
-  --color-neutral-800: #343a40;
-  --color-warning: #ffc107;
-  --color-danger: #dc3545;
+  /* Cores fixas de marca/estado, sem indireção. */
+  --color-secondary: #16a34a;
+  --color-on-secondary: #f0fdf4;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
 
   --radius-brand: 0.8rem;
 
@@ -38,7 +43,6 @@
 }
 
 @theme inline {
-  /* Variam entre claro/escuro: mantém a indireção para a variável runtime em :root. */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--brand-primary);
@@ -46,19 +50,17 @@
   --color-secondary-foreground: var(--brand-secondary-foreground);
   --color-secondary-subtle: var(--brand-secondary-subtle);
   --color-secondary-subtle-border: var(--brand-secondary-subtle-border);
+  --color-neutral-100: var(--brand-neutral-100);
+  --color-neutral-600: var(--brand-neutral-600);
+  --color-neutral-800: var(--brand-neutral-800);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-
-    --brand-primary: #ededed;
-    --brand-primary-foreground: #000000;
-    --brand-secondary-foreground: #d9ffa8;
-    --brand-secondary-subtle: #1a2412;
-    --brand-secondary-subtle-border: #2d3a1f;
-  }
+:root {
+  /* Sem isso, o Chrome/Firefox desenha o popup nativo do <select> (e outros controles de
+     formulário) com chrome CLARO por padrão, mesmo com o resto da página escuro — as
+     <option> ficam com texto claro (herdado de --foreground) sobre fundo branco do SO,
+     quase ilegível. color-scheme avisa o navegador pra desenhar esse chrome nativo escuro. */
+  color-scheme: dark;
 }
 
 body {

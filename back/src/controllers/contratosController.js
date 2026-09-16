@@ -44,7 +44,7 @@ exports.detalhar = async (req, res) => {
 
 exports.gerar = async (req, res) => {
   try {
-    const contrato = await contratosService.gerar(req.body);
+    const contrato = await contratosService.gerar(req.body, { usuario: req.user });
     return res.status(201).json(contrato);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -57,7 +57,7 @@ exports.gerar = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const contrato = await contratosService.atualizar(req.params.id, req.body);
+    const contrato = await contratosService.atualizar(req.params.id, req.body, { usuario: req.user });
     return res.json(contrato);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -70,7 +70,7 @@ exports.atualizar = async (req, res) => {
 
 exports.renovar = async (req, res) => {
   try {
-    const contrato = await contratosService.renovar(req.params.id, req.body);
+    const contrato = await contratosService.renovar(req.params.id, req.body, { usuario: req.user });
     return res.status(201).json(contrato);
   } catch (error) {
     if (error instanceof ApiError) {

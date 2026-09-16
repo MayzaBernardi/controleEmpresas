@@ -3,6 +3,7 @@
 const { Op } = require('sequelize');
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
+const auditoriaService = require('./auditoriaService');
 
 // RN-35: limite anual de reservas por tipo de espaço, contando reservas com status
 // diferente de "cancelado" no ano corrente.
@@ -54,6 +55,7 @@ async function criarReserva({
   dataReserva = null,
   status = 'pre_reservado',
   observacoes = null,
+  usuario,
   transaction,
   models,
 } = {}) {
@@ -80,10 +82,19 @@ async function criarReserva({
     );
   }
 
-  return ReservaEspaco.create(
+  const reserva = await ReservaEspaco.create(
     { empresa_id: empresaId, tipo_espaco: tipoEspaco, data_reserva: dataReserva, status, observacoes },
     { transaction }
   );
+  await auditoriaService.registrar({
+    entidade: 'reservas_espaco',
+    entidadeId: reserva.id,
+    acao: 'create',
+    usuario,
+    dadosNovos: reserva.toJSON(),
+    models: db,
+  });
+  return reserva;
 }
 
 // RN-33: listagem de reservas — equipe_programa vê todas; empresa_afiliada só as suas
@@ -108,7 +119,7 @@ const STATUS_VALIDOS = ['pre_reservado', 'confirmado', 'realizado', 'cancelado']
  * valor inválido viraria SequelizeDatabaseError (constraint do ENUM no Postgres), que
  * wrapSequelizeErrors não trata, e cairia como 500 genérico em vez de 400.
  */
-async function atualizarStatus(id, novoStatus, { models } = {}) {
+async function atualizarStatus(id, novoStatus, { usuario, models } = {}) {
   const db = models || require('../models');
   const { ReservaEspaco } = db;
 
@@ -121,8 +132,19 @@ async function atualizarStatus(id, novoStatus, { models } = {}) {
     throw new ApiError(400, `status inválido: "${novoStatus}". Valores válidos: ${STATUS_VALIDOS.join(', ')}.`);
   }
 
+  const statusAnterior = reserva.status;
   reserva.status = novoStatus;
-  return wrapSequelizeErrors(reserva.save());
+  const resultado = await wrapSequelizeErrors(reserva.save());
+  await auditoriaService.registrar({
+    entidade: 'reservas_espaco',
+    entidadeId: reserva.id,
+    acao: novoStatus === 'cancelado' ? 'delete' : 'update',
+    usuario,
+    dadosAnteriores: { status: statusAnterior },
+    dadosNovos: { status: novoStatus },
+    models: db,
+  });
+  return resultado;
 }
 
 module.exports = {

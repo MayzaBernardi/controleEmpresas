@@ -2,6 +2,7 @@
 
 const { Router } = require('express');
 const {
+  sugerirCorpo,
   criarRascunho,
   listar,
   editar,
@@ -12,6 +13,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
 
 const router = Router();
+
+router.post('/sugestao-corpo', authMiddleware, requireRole('equipe_programa'), sugerirCorpo);
 
 router.post('/rascunho', authMiddleware, requireRole('equipe_programa'), criarRascunho);
 

@@ -54,10 +54,19 @@ comandos de migrate/seed).
 
 - Upload real de arquivo (documentos) — só a referência (`url_arquivo`) é
   persistida, não há storage de fato integrado.
-- Geração real de rascunho de e-mail por IA — `emailAgentService.js`
-  ainda está vazio; o endpoint de rascunho aceita o texto já pronto no
-  corpo da requisição.
 - Envio real de e-mail (SMTP) — `POST /comunicacoes-email/:id/enviar` só
   faz a transição de estado (RN-25/RN-28), não dispara e-mail de verdade.
 - Geração de PDF/documento de contrato — `POST /contratos` cria o registro
   no banco (RF-03), não um arquivo.
+
+## Novidades (2026-09-16)
+
+- `POST /comunicacoes-email/sugestao-corpo` (pasta "11. Comunicações /
+  E-mail"): gera de verdade o corpo do e-mail via Gemini
+  (`emailAgentService.js` + `GEMINI_API_KEY`) a partir só do assunto. Não
+  persiste nada — o resultado (`corpo_html`) é o que se usa no corpo de
+  "Criar rascunho de e-mail" em seguida.
+- Formulários de inscrição (`GET /formulario-respostas`): nova regra
+  RN-42 — some da listagem qualquer formulário cuja empresa (por CNPJ,
+  vinculada ou só informada no payload) já tenha um contrato vigente
+  dentro da data de validade.
