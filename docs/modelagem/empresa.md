@@ -27,6 +27,7 @@ de uma submissão em `formulario_respostas` (RN-04).
 | `cidade` | STRING(255) | não | Adicionada na ADR 0005 §7. |
 | `uf` | STRING(2) | não | Adicionada na ADR 0005 §7. |
 | `representante_legal` | STRING(255) | não | Nome citado no contrato; distinto dos signatários formais em `assinaturas`. Adicionada na ADR 0005 §7. |
+| `ativo` | BOOLEAN | sim | Default `true`. Excluir a empresa é sempre soft-delete (RN-37/ADR 0007) — `false` some da listagem, nunca remove a linha. |
 | `created_at` / `updated_at` | TIMESTAMP | sim (auto) | Gerenciados pelo Sequelize. |
 
 ## Relacionamentos
@@ -41,6 +42,7 @@ de uma submissão em `formulario_respostas` (RN-04).
 - **RN-32** (validator condicional no model): `tipo_empresa = 'internacional'` dispensa `cnpj` mas exige `identificador_estrangeiro`; `tipo_empresa = 'nacional'` exige `cnpj` com 14 dígitos numéricos (após remover máscara).
 - **RN-33** (scope nomeado `paraEmpresa(empresaId)`): filtra `where: { [Op.and]: [{ id: empresaId }] }`, para que um usuário `empresa_afiliada` só enxergue seu próprio cadastro. Deve ser chamado explicitamente pelo controller — nunca é `defaultScope`. O filtro é embrulhado em `Op.and` (em vez de `where: { id: empresaId }` puro) porque a coluna de isolamento aqui é a própria PK — a mesma chave que `findByPk` usa internamente; sem o `Op.and`, um `Empresa.scope(...).findByPk(outroId)` faria o merge raso do Sequelize sobrescrever o filtro do scope em vez de combiná-lo com AND, vazando dados de outra empresa (bug real, encontrado e corrigido nesta modelagem).
 - **RN-01**: base do isolamento por perfil entre os três atores do sistema.
+- **RN-37** (ADR 0007): `ativo = false` é a única forma de "excluir" uma empresa — nunca `DELETE`. `GET /empresas` só retorna `ativo = true`.
 
 ## Notas
 

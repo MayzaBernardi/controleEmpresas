@@ -1,20 +1,26 @@
 'use strict';
 
 const { Router } = require('express');
-const controller = require('../controllers/comunicacoesController');
+const {
+  criarRascunho,
+  listar,
+  editar,
+  aprovar,
+  enviar,
+} = require('../controllers/comunicacoesController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = Router();
 
-router.use(authMiddleware);
-router.use(requireRole('equipe_programa'));
+router.post('/rascunho', authMiddleware, requireRole('equipe_programa'), criarRascunho);
 
-router.post('/rascunho', asyncHandler(controller.criarRascunho));
-router.get('/', asyncHandler(controller.listar));
-router.patch('/:id', asyncHandler(controller.editar));
-router.post('/:id/aprovar', asyncHandler(controller.aprovar));
-router.post('/:id/enviar', asyncHandler(controller.enviar));
+router.get('/', authMiddleware, requireRole('equipe_programa'), listar);
+
+router.patch('/:id', authMiddleware, requireRole('equipe_programa'), editar);
+
+router.post('/:id/aprovar', authMiddleware, requireRole('equipe_programa'), aprovar);
+
+router.post('/:id/enviar', authMiddleware, requireRole('equipe_programa'), enviar);
 
 module.exports = router;

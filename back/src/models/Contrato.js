@@ -84,6 +84,28 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATEONLY,
         allowNull: true,
       },
+      // Contratos são gerados manualmente pela equipe fora do sistema — o upload abaixo
+      // (PNG/PDF em base64, direto no Postgres, sem storage externo por ora) é o registro
+      // do documento em si; os campos estruturados acima continuam sendo a fonte de
+      // verdade pra vigência/renovação.
+      arquivo_nome: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+      },
+      arquivo_mimetype: {
+        type: DataTypes.STRING(150),
+        allowNull: true,
+      },
+      arquivo_base64: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      // Excluir é soft-delete (sai da listagem).
+      ativo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
       // RN-30: estados derivados de tempo, calculados em leitura — nunca persistidos.
       estaVencido: {
         type: DataTypes.VIRTUAL,

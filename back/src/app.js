@@ -6,7 +6,9 @@ const routes = require('./routes');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+// Limite elevado pra caber upload de contrato/documento (PNG/PDF) em base64 direto no
+// body — front aplica um teto de ~8MB por arquivo antes de enviar (ver front/src/lib/arquivo.ts).
+app.use(express.json({ limit: '15mb' }));
 
 app.use(routes);
 

@@ -20,9 +20,10 @@ qualquer registro formal no sistema.
 | `email_contato` | STRING(255) | não | |
 | `telefone_contato` | STRING(30) | não | |
 | `responsavel_interno` | STRING(255) | não | Quem na equipe do programa fez o contato/enviou o material. |
-| `status_prospeccao_id` | INTEGER (FK → `status_prospeccao.id`) | sim | Default `1` (`identificado`). Ver [`status-prospeccao.md`](./status-prospeccao.md). |
-| `formulario_resposta_id` | BIGINT (FK → `formulario_respostas.id`, `ON DELETE SET NULL`) | não | Preenchido só quando/se a prospecção converte (RN-36). |
+| `status_prospeccao_id` | INTEGER (FK → `status_prospeccao.id`) | sim | Default código `em_contato`. Ver [`status-prospeccao.md`](./status-prospeccao.md). |
+| `formulario_resposta_id` | BIGINT (FK → `formulario_respostas.id`, `ON DELETE SET NULL`) | não | Preenchido só quando/se a prospecção converte (RN-36). Uma prospecção com este campo preenchido some da listagem (`GET /prospeccoes`) — é o próprio critério de "convertida", não há status para isso. |
 | `observacoes` | TEXT | não | |
+| `ativo` | BOOLEAN | sim | Default `true`. Excluir é soft-delete (RN-37/ADR 0007) — distinto de ter convertido (`formulario_resposta_id`). |
 | `created_at` / `updated_at` | TIMESTAMP | sim (auto) | |
 
 ## Relacionamentos
@@ -33,10 +34,16 @@ qualquer registro formal no sistema.
 
 - **RN-36** (implementada em service, não em hook de model —
   `back/src/services/prospeccaoService.js`): quando um `FormularioResposta`
-  é criado, se existir uma prospecção em aberto com o mesmo
-  `email_contato`/`nome_empresa`, ela é vinculada
-  (`formulario_resposta_id`) e seu `status_prospeccao_id` avança para
-  `convertido_para_formulario`.
+  é criado, se existir uma prospecção ativa e ainda não convertida
+  (`formulario_resposta_id` nulo) com o mesmo `email_contato`/`nome_empresa`,
+  ela é vinculada (`formulario_resposta_id`). **Atualizada em 2026-09-16
+  (ADR 0007)**: não muda mais `status_prospeccao_id` — a taxonomia atual não
+  tem um estado "convertida" (RN-39).
+- **RN-37** (ADR 0007): `ativo = false` é a única forma de "excluir" — nunca
+  `DELETE`.
+- **RN-39** (ADR 0007): `status_prospeccao` só tem 3 códigos possíveis
+  (`em_contato`, `nao_constatada`, `proposta_rejeitada`) — nenhum deles filtra
+  elegibilidade para a RN-36, diferente do esquema antigo.
 
 ## Notas
 
@@ -46,3 +53,7 @@ qualquer registro formal no sistema.
 - Sem backfill de dados legados: a planilha não tinha uma aba de
   prospecção correlacionável com segurança aos `formulario_respostas`
   já existentes (ADR 0005 §3) — a tabela começa vazia.
+- `GET /prospeccoes` filtra `ativo = true` **e** `formulario_resposta_id IS
+  NULL` — uma prospecção excluída ou já convertida não aparece na listagem
+  (ADR 0007 §3). `GET /prospeccoes/status-disponiveis` existe só para o
+  front montar o seletor de status na edição.

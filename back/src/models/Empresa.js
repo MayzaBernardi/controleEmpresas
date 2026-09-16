@@ -80,6 +80,13 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(255),
         allowNull: true,
       },
+      // Excluir uma empresa é sempre soft-delete: sai das listagens, nunca apaga de
+      // verdade (referenciada por contratos/documentos/financeiro).
+      ativo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
     },
     {
       tableName: 'empresas',
