@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
 import {
   DangerButton,
+  EditButton,
   ErrorText,
   Field,
   Input,
@@ -119,15 +120,15 @@ function LinhaProspeccao({
 
   return (
     <>
-      <tr className="border-b border-neutral-100 last:border-0">
+      <tr className="border-b border-secondary-subtle-border last:border-0">
         <td className="px-4 py-3 font-medium text-foreground">{prospeccao.nome_empresa}</td>
-        <td className="px-4 py-3 text-neutral-800">
+        <td className="px-4 py-3 text-foreground">
           {prospeccao.cidade ? `${prospeccao.cidade}/${prospeccao.uf ?? "—"}` : "—"}
         </td>
-        <td className="px-4 py-3 text-neutral-800">
+        <td className="px-4 py-3 text-foreground">
           {prospeccao.email_contato || prospeccao.telefone_contato || "—"}
         </td>
-        <td className="px-4 py-3 text-neutral-800">{prospeccao.responsavel_interno || "—"}</td>
+        <td className="px-4 py-3 text-foreground">{prospeccao.responsavel_interno || "—"}</td>
         <td className="px-4 py-3">
           {prospeccao.statusProspeccao ? (
             <Badge variante={STATUS_VARIANTE[prospeccao.statusProspeccao.codigo] ?? "neutral"}>
@@ -139,9 +140,9 @@ function LinhaProspeccao({
         </td>
         <td className="px-4 py-3 text-right">
           <div className="flex justify-end gap-2">
-            <SecondaryButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+            <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
               {editando ? "Cancelar" : "Editar"}
-            </SecondaryButton>
+            </EditButton>
             <DangerButton type="button" onClick={excluir} disabled={salvando}>
               Excluir
             </DangerButton>
@@ -149,7 +150,7 @@ function LinhaProspeccao({
         </td>
       </tr>
       {editando && (
-        <tr className="border-b border-neutral-100 bg-neutral-100/30">
+        <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
           <td colSpan={6} className="px-4 py-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Nome da empresa" htmlFor={`nome-${prospeccao.id}`}>
@@ -267,7 +268,7 @@ export default function ProspeccoesPage() {
     <div>
       <PageHeader
         title="Prospecção"
-        subtitle="Empresas em contato, antes de existir cadastro formal (ADR 0005 §3)."
+        subtitle="Empresas em contato, antes de existir cadastro formal."
         action={
           <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
             {formAberto ? "Cancelar" : "Nova prospecção"}
@@ -343,16 +344,16 @@ export default function ProspeccoesPage() {
       )}
 
       {prospeccoes && prospeccoes.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">Cidade/UF</th>
-                <th className="px-4 py-3 font-medium">Contato</th>
-                <th className="px-4 py-3 font-medium">Responsável</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium" />
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">Cidade/UF</th>
+                <th className="px-4 py-3 font-bold">Contato</th>
+                <th className="px-4 py-3 font-bold">Responsável</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold" />
               </tr>
             </thead>
             <tbody>

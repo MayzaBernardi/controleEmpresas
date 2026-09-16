@@ -18,7 +18,7 @@ exports.listar = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const usuario = await usuariosService.atualizar(req.params.id, req.body);
+    const usuario = await usuariosService.atualizar(req.params.id, req.body, { usuario: req.user });
     return res.json(usuario);
   } catch (error) {
     if (error instanceof ApiError) {

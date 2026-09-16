@@ -79,7 +79,7 @@ export default function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nome.sobrenome@pollenparque.org.br"
-            className="mt-2 w-full rounded-brand border border-neutral-100 px-4 py-2.5 text-sm text-black outline-none focus:border-[#53663a] focus:ring-2 focus:ring-secondary"
+            className="mt-2 w-full rounded-brand border border-gray-200 bg-white px-4 py-2.5 text-sm text-black outline-none focus:border-[#53663a] focus:ring-2 focus:ring-secondary"
           />
 
           {erro && (
@@ -97,7 +97,9 @@ export default function LoginPage() {
           <p className="mt-6 rounded-brand border border-[#ecffd3] bg-[#f5ffe9] px-4 py-3 text-xs text-[#53663a]">
             Ambiente de desenvolvimento: o login institucional (SSO) ainda não foi implementado
             (ADR 0003). Use o e-mail de um usuário já cadastrado, ex.:{" "}
-            <span className="font-medium">ana.ribeiro@pollenparque.org.br</span>.
+            <span className="font-medium">ana.ribeiro@pollenparque.org.br</span> (equipe do
+            programa) ou <span className="font-medium">carla.souza@pollenparque.org.br</span>{" "}
+            (contabilidade).
           </p>
         </form>
       </div>

@@ -47,6 +47,7 @@ exports.criar = async (req, res) => {
         tipoEspaco: req.body.tipo_espaco,
         dataReserva: req.body.data_reserva,
         observacoes: req.body.observacoes,
+        usuario: req.user,
       });
     } catch (err) {
       if (err instanceof ApiError) {
@@ -67,7 +68,7 @@ exports.criar = async (req, res) => {
 
 exports.atualizarStatus = async (req, res) => {
   try {
-    const reserva = await reservaEspacoService.atualizarStatus(req.params.id, req.body.status);
+    const reserva = await reservaEspacoService.atualizarStatus(req.params.id, req.body.status, { usuario: req.user });
     return res.json(reserva);
   } catch (error) {
     if (error instanceof ApiError) {

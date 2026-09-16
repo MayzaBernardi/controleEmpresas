@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
-import { ErrorText, Input, PrimaryButton, SecondaryButton } from "@/components/form";
+import { EditButton, ErrorText, Input, PrimaryButton, SecondaryButton } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatarMoeda } from "@/lib/format";
 import { useApiResource } from "@/lib/useApiResource";
@@ -49,9 +49,9 @@ function LinhaPlano({ plano, token, onSalvo }: { plano: PlanoAfiliacao; token: s
   }
 
   return (
-    <tr className="border-b border-neutral-100 last:border-0 align-top">
+    <tr className="border-b border-secondary-subtle-border last:border-0 align-top">
       <td className="px-4 py-3 font-medium text-foreground">{plano.nome}</td>
-      <td className="px-4 py-3 text-neutral-800">
+      <td className="px-4 py-3 text-foreground">
         {editando ? (
           <Input
             type="number"
@@ -82,9 +82,9 @@ function LinhaPlano({ plano, token, onSalvo }: { plano: PlanoAfiliacao; token: s
             </PrimaryButton>
           </div>
         ) : (
-          <SecondaryButton type="button" onClick={() => setEditando(true)} className="px-3 py-1.5 text-xs">
+          <EditButton type="button" onClick={() => setEditando(true)} className="px-3 py-1.5 text-xs">
             Editar valor
-          </SecondaryButton>
+          </EditButton>
         )}
       </td>
     </tr>
@@ -96,21 +96,21 @@ export default function PlanosAfiliacaoPage() {
 
   return (
     <div>
-      <PageHeader title="Planos de afiliação" subtitle="Catálogo de planos usados na geração de contratos (ADR 0005 §1)." />
+      <PageHeader title="Planos de afiliação" subtitle="Catálogo de planos usados na geração de contratos." />
 
       {erro && <ErrorText>{erro}</ErrorText>}
       {!planos && !erro && <p className="text-sm text-neutral-600">Carregando…</p>}
       {planos && planos.length === 0 && <p className="text-sm text-neutral-600">Nenhum plano cadastrado.</p>}
 
       {planos && planos.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Plano</th>
-                <th className="px-4 py-3 font-medium">Valor</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium" />
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Plano</th>
+                <th className="px-4 py-3 font-bold">Valor</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold" />
               </tr>
             </thead>
             <tbody>

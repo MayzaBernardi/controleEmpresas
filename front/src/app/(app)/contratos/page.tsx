@@ -2,9 +2,10 @@
 
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { HiOutlineRefresh } from "react-icons/hi";
 import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
-import { DangerButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea } from "@/components/form";
+import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea } from "@/components/form";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
@@ -169,12 +170,12 @@ function LinhaContrato({
 
   return (
     <>
-      <tr className="border-b border-neutral-100 last:border-0">
+      <tr className="border-b border-secondary-subtle-border last:border-0">
         <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(contrato.empresa_id)}</td>
-        <td className="px-4 py-3 text-neutral-800">
+        <td className="px-4 py-3 text-foreground">
           {formatarData(contrato.data_inicio_vigencia)} – {formatarData(contrato.data_termino_vigencia)}
         </td>
-        <td className="px-4 py-3 text-neutral-800">{formatarMoeda(contrato.valor_anuidade)}</td>
+        <td className="px-4 py-3 text-foreground">{formatarMoeda(contrato.valor_anuidade)}</td>
         <td className="px-4 py-3">
           {contrato.estaVencido && <Badge variante="danger">Vencido</Badge>}
           {!contrato.estaVencido && contrato.estaProximoVencimento && <Badge variante="warning">Renovação próxima</Badge>}
@@ -196,13 +197,18 @@ function LinhaContrato({
         <td className="px-4 py-3 text-right">
           <div className="flex flex-wrap justify-end gap-2">
             {(contrato.estaVencido || contrato.estaProximoVencimento) && (
-              <SecondaryButton type="button" onClick={irParaRenovacao} className="px-3 py-1.5 text-xs">
+              <button
+                type="button"
+                onClick={irParaRenovacao}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#AAD6E1] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#8FC1D0]"
+              >
+                <HiOutlineRefresh className="h-3.5 w-3.5" />
                 Renovar
-              </SecondaryButton>
+              </button>
             )}
-            <SecondaryButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+            <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
               {editando ? "Cancelar" : "Editar"}
-            </SecondaryButton>
+            </EditButton>
             <DangerButton type="button" onClick={excluir} disabled={salvando}>
               Excluir
             </DangerButton>
@@ -210,7 +216,7 @@ function LinhaContrato({
         </td>
       </tr>
       {editando && (
-        <tr className="border-b border-neutral-100 bg-neutral-100/30">
+        <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
           <td colSpan={6} className="px-4 py-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Número do termo" htmlFor={`termo-${contrato.id}`}>
@@ -455,16 +461,16 @@ export default function ContratosPage() {
       )}
 
       {contratos && contratos.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">Vigência</th>
-                <th className="px-4 py-3 font-medium">Anuidade</th>
-                <th className="px-4 py-3 font-medium">Situação</th>
-                <th className="px-4 py-3 font-medium">Arquivo</th>
-                <th className="px-4 py-3 font-medium" />
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">Vigência</th>
+                <th className="px-4 py-3 font-bold">Anuidade</th>
+                <th className="px-4 py-3 font-bold">Situação</th>
+                <th className="px-4 py-3 font-bold">Arquivo</th>
+                <th className="px-4 py-3 font-bold" />
               </tr>
             </thead>
             <tbody>

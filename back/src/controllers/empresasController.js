@@ -44,7 +44,7 @@ exports.detalhar = async (req, res) => {
 
 exports.criar = async (req, res) => {
   try {
-    const empresa = await empresasService.criar(req.body);
+    const empresa = await empresasService.criar(req.body, { usuario: req.user });
     return res.status(201).json(empresa);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -57,7 +57,7 @@ exports.criar = async (req, res) => {
 
 exports.atualizar = async (req, res) => {
   try {
-    const empresa = await empresasService.atualizar(req.params.id, req.body);
+    const empresa = await empresasService.atualizar(req.params.id, req.body, { usuario: req.user });
     return res.json(empresa);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -72,7 +72,8 @@ exports.atualizarStatusProcesso = async (req, res) => {
   try {
     const empresa = await empresasService.atualizarStatusProcesso(
       req.params.id,
-      req.body.status_processo_id ?? null
+      req.body.status_processo_id ?? null,
+      { usuario: req.user }
     );
     return res.json(empresa);
   } catch (error) {

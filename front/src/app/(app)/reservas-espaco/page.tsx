@@ -75,12 +75,12 @@ function LinhaReserva({
   }
 
   return (
-    <tr className="border-b border-neutral-100 last:border-0">
+    <tr className="border-b border-secondary-subtle-border last:border-0">
       <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(reserva.empresa_id)}</td>
-      <td className="px-4 py-3 text-neutral-800">
+      <td className="px-4 py-3 text-foreground">
         {TIPOS_ESPACO.find((t) => t.valor === reserva.tipo_espaco)?.rotulo ?? reserva.tipo_espaco}
       </td>
-      <td className="px-4 py-3 text-neutral-800">{formatarData(reserva.data_reserva)}</td>
+      <td className="px-4 py-3 text-foreground">{formatarData(reserva.data_reserva)}</td>
       <td className="px-4 py-3">
         <Badge variante={STATUS_VARIANTE[reserva.status]}>{reserva.status.replace(/_/g, " ")}</Badge>
       </td>
@@ -153,7 +153,7 @@ export default function ReservasEspacoPage() {
     <div>
       <PageHeader
         title="Espaços & reservas"
-        subtitle="Reservas de espaço compartilhado, com limite anual por tipo (RN-35)."
+        subtitle="Reservas de espaço compartilhado, com limite anual por tipo de espaço."
         action={
           <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
             {formAberto ? "Cancelar" : "Nova reserva"}
@@ -229,15 +229,15 @@ export default function ReservasEspacoPage() {
       {reservas && reservas.length === 0 && <p className="text-sm text-neutral-600">Nenhuma reserva ainda.</p>}
 
       {reservas && reservas.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
-                <th className="px-4 py-3 font-medium">Data</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Mudar status</th>
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">Tipo</th>
+                <th className="px-4 py-3 font-bold">Data</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold">Mudar status</th>
               </tr>
             </thead>
             <tbody>
@@ -259,22 +259,22 @@ export default function ReservasEspacoPage() {
         Espaços físicos (conceito legado)
       </h2>
       {espacos && espacos.length > 0 && (
-        <div className="overflow-x-auto rounded-brand border border-neutral-100">
+        <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-100/50 text-neutral-600">
-                <th className="px-4 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">Sala</th>
-                <th className="px-4 py-3 font-medium">Bloco</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+              <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
+                <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">Sala</th>
+                <th className="px-4 py-3 font-bold">Bloco</th>
+                <th className="px-4 py-3 font-bold">Status</th>
               </tr>
             </thead>
             <tbody>
               {espacos.map((espaco) => (
-                <tr key={espaco.id} className="border-b border-neutral-100 last:border-0">
+                <tr key={espaco.id} className="border-b border-secondary-subtle-border last:border-0">
                   <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(espaco.empresa_id)}</td>
-                  <td className="px-4 py-3 text-neutral-800">{espaco.identificador_sala}</td>
-                  <td className="px-4 py-3 text-neutral-800">{espaco.bloco ?? "—"}</td>
+                  <td className="px-4 py-3 text-foreground">{espaco.identificador_sala}</td>
+                  <td className="px-4 py-3 text-foreground">{espaco.bloco ?? "—"}</td>
                   <td className="px-4 py-3">
                     <Badge variante={espaco.ativo ? "secondary" : "neutral"}>
                       {espaco.ativo ? "Ativo" : "Inativo"}
