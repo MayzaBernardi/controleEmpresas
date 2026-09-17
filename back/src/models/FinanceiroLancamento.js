@@ -63,6 +63,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(1000),
         allowNull: true,
       },
+      comprovante_mimetype: {
+        type: DataTypes.STRING(150),
+        allowNull: true,
+      },
+      comprovante_base64: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       observacoes: {
         type: DataTypes.TEXT,
         allowNull: true,
