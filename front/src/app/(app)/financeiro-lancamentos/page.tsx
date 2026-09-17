@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import { GiConfirmed } from "react-icons/gi";
+import { MdOutlineWatchLater } from "react-icons/md";
+import { TbReportMoneyFilled } from "react-icons/tb";
 import { Badge } from "@/components/Badge";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -14,6 +17,7 @@ import { useApiResource } from "@/lib/useApiResource";
 interface FinanceiroLancamento {
   id: number;
   empresa_id: string;
+  tipo_lancamento: "nota_fiscal" | "boleto";
   valor: string;
   forma_pagamento: string;
   numero_documento: string | null;
@@ -33,6 +37,7 @@ interface Empresa {
 
 const CAMPOS_INICIAIS = {
   empresa_id: "",
+  tipo_lancamento: "",
   valor: "",
   data_vencimento: "",
   forma_pagamento: "boleto",
@@ -94,7 +99,13 @@ function BotaoConfirmarPagamento({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <SecondaryButton type="button" onClick={confirmar} disabled={confirmando} className="px-3 py-1.5 text-xs">
+      <SecondaryButton
+        type="button"
+        onClick={confirmar}
+        disabled={confirmando}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
+      >
+        <GiConfirmed className="h-3.5 w-3.5" />
         {confirmando ? "Confirmando…" : "Confirmar pagamento"}
       </SecondaryButton>
       {erro && <p className="text-xs text-danger">{erro}</p>}
@@ -152,6 +163,7 @@ export default function FinanceiroPage() {
         token,
         body: {
           empresa_id: campos.empresa_id,
+          tipo_lancamento: campos.tipo_lancamento,
           valor: Number(campos.valor),
           data_vencimento: campos.data_vencimento,
           forma_pagamento: campos.forma_pagamento,
@@ -178,19 +190,29 @@ export default function FinanceiroPage() {
         title="Financeiro"
         subtitle={
           podeLancar
-            ? "Cadastro de boleto/nota fiscal e confirmação de pagamento (RN-16)."
-            : "Leitura dos lançamentos — NF, boleto e confirmação de pagamento são feitos pela contabilidade."
+            ? "Cadastro de boleto/nota fiscal"
+            : "Leitura dos lançamentos — cadastrados pela contabilidade. Nota fiscal já entra como paga na data do cadastro; boleto fica pendente até a confirmação manual do pagamento."
         }
         action={
           <div className="flex items-center gap-2">
             {podeLancar && (
-              <PrimaryButton type="button" onClick={() => setFormAberto((v) => !v)} className="text-white!">
+              <PrimaryButton
+                type="button"
+                onClick={() => setFormAberto((v) => !v)}
+                icon={!formAberto && <TbReportMoneyFilled className="h-4 w-4" />}
+                className="text-white!"
+              >
                 {formAberto ? "Cancelar" : "Cadastrar boleto / nota"}
               </PrimaryButton>
             )}
-            <SecondaryButton type="button" onClick={() => setSomenteAtrasados((v) => !v)}>
+            <button
+              type="button"
+              onClick={() => setSomenteAtrasados((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-danger px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
+            >
+              <MdOutlineWatchLater className="h-4 w-4" />
               {somenteAtrasados ? "Ver todos" : "Só atrasados"}
-            </SecondaryButton>
+            </button>
           </div>
         }
       />
@@ -210,6 +232,19 @@ export default function FinanceiroPage() {
                   {empresa.nome_fantasia || empresa.razao_social}
                 </option>
               ))}
+            </Select>
+          </Field>
+
+          <Field label="Tipo de lançamento" htmlFor="tipo_lancamento">
+            <Select
+              id="tipo_lancamento"
+              required
+              value={campos.tipo_lancamento}
+              onChange={(e) => atualizarCampo("tipo_lancamento", e.target.value)}
+            >
+              <option value="">Selecione…</option>
+              <option value="nota_fiscal">Nota Fiscal</option>
+              <option value="boleto">Boleto</option>
             </Select>
           </Field>
 
@@ -297,6 +332,7 @@ export default function FinanceiroPage() {
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
                 <th className="px-4 py-3 font-bold">Empresa</th>
+                <th className="px-4 py-3 font-bold">Tipo</th>
                 <th className="px-4 py-3 font-bold">Valor</th>
                 <th className="px-4 py-3 font-bold">Vencimento</th>
                 <th className="px-4 py-3 font-bold">Forma</th>
@@ -309,6 +345,13 @@ export default function FinanceiroPage() {
               {lancamentos.map((lancamento) => (
                 <tr key={lancamento.id} className="border-b border-secondary-subtle-border last:border-0">
                   <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(lancamento.empresa_id)}</td>
+                  <td className="px-4 py-3">
+                    {lancamento.tipo_lancamento === "nota_fiscal" ? (
+                      <Badge variante="secondary">Nota Fiscal</Badge>
+                    ) : (
+                      <Badge variante="neutral">Boleto</Badge>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-foreground">{formatarMoeda(lancamento.valor)}</td>
                   <td className="px-4 py-3 text-foreground">{formatarData(lancamento.data_vencimento)}</td>
                   <td className="px-4 py-3 text-foreground capitalize">{lancamento.forma_pagamento}</td>

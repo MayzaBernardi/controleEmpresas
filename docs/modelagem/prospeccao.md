@@ -20,7 +20,7 @@ qualquer registro formal no sistema.
 | `email_contato` | STRING(255) | não | |
 | `telefone_contato` | STRING(30) | não | |
 | `responsavel_interno` | STRING(255) | não | Quem na equipe do programa fez o contato/enviou o material. |
-| `status_prospeccao_id` | INTEGER (FK → `status_prospeccao.id`) | sim | Default código `em_contato`. Ver [`status-prospeccao.md`](./status-prospeccao.md). |
+| `status_prospeccao_id` | INTEGER (FK → `status_prospeccao.id`) | sim | Default código `nao_constatada` (RN-39, atualizado 2026-09-17 — antes era `em_contato`). Ver [`status-prospeccao.md`](./status-prospeccao.md). |
 | `formulario_resposta_id` | BIGINT (FK → `formulario_respostas.id`, `ON DELETE SET NULL`) | não | Preenchido só quando/se a prospecção converte (RN-36). Uma prospecção com este campo preenchido some da listagem (`GET /prospeccoes`) — é o próprio critério de "convertida", não há status para isso. |
 | `observacoes` | TEXT | não | |
 | `ativo` | BOOLEAN | sim | Default `true`. Excluir é soft-delete (RN-37/ADR 0007) — distinto de ter convertido (`formulario_resposta_id`). |
