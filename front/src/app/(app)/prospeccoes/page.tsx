@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import {
   DangerButton,
@@ -69,6 +70,7 @@ function LinhaProspeccao({
   token: string | null;
   onSalvo: () => void;
 }) {
+  const pedirConfirmacao = useConfirm();
   const [editando, setEditando] = useState(false);
   const [campos, setCampos] = useState({
     nome_empresa: prospeccao.nome_empresa,
@@ -106,7 +108,14 @@ function LinhaProspeccao({
   }
 
   async function excluir() {
-    if (!window.confirm(`Excluir a prospecção de "${prospeccao.nome_empresa}"?`)) return;
+    if (
+      !(await pedirConfirmacao({
+        mensagem: `Excluir a prospecção de "${prospeccao.nome_empresa}"?`,
+        tone: "danger",
+        confirmarLabel: "Excluir",
+      }))
+    )
+      return;
     setSalvando(true);
     try {
       await apiFetch(`/prospeccoes/${prospeccao.id}`, { method: "PATCH", token, body: { ativo: false } });

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { GrStatusGood } from "react-icons/gr";
 import { IoIosSend } from "react-icons/io";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, SecondaryButton, TextArea } from "@/components/form";
 import { formatarData } from "@/lib/format";
@@ -55,6 +56,7 @@ function LinhaComunicacao({
   const [corpoHtml, setCorpoHtml] = useState(comunicacao.corpo_html);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const pedirConfirmacao = useConfirm();
 
   async function salvarEdicao() {
     setProcessando(true);
@@ -101,7 +103,14 @@ function LinhaComunicacao({
   }
 
   async function excluir() {
-    if (!window.confirm(`Excluir a comunicação "${comunicacao.assunto}"?`)) return;
+    if (
+      !(await pedirConfirmacao({
+        mensagem: `Excluir a comunicação "${comunicacao.assunto}"?`,
+        tone: "danger",
+        confirmarLabel: "Excluir",
+      }))
+    )
+      return;
     setProcessando(true);
     try {
       await apiFetch(`/comunicacoes-email/${comunicacao.id}`, { method: "PATCH", token, body: { ativo: false } });
