@@ -22,5 +22,38 @@ services:
       timeout: 5s
       retries: 10
 
+  back:
+    build:
+      context: ./back
+    container_name: pollen-parque-back
+    restart: unless-stopped
+    env_file:
+      - ./back/.env
+    environment:
+      # Dentro da rede do compose, o Postgres é acessado pelo nome do serviço "postgres" —
+      # "localhost" (valor usado em back/.env pro dev local fora de container) apontaria
+      # pro próprio container do back, não pro banco.
+      POSTGRES_HOST: postgres
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  front:
+    build:
+      context: ./front
+      args:
+        # NEXT_PUBLIC_* é embutido no bundle em tempo de build (ver front/Dockerfile) — vem
+        # de uma variável de ambiente do host rodando o compose (ou de um .env na raiz do
+        # repo, ver .env.example), não de front/.env.local.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: pollen-parque-front
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      - back
+
 volumes:
   pollen_parque_postgres_data:
