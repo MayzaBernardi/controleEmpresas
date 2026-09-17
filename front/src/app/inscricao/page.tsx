@@ -2,31 +2,81 @@
 
 import { useState, type FormEvent } from "react";
 import { PollenLogo } from "@/components/PollenLogo";
-import { ErrorText, Field, Input, PrimaryButton } from "@/components/form";
+import { ErrorText, PrimaryButton } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 
 // RF-01/RN-04: rota pública, sem autenticação — pensada pra ser enviada por link direto
 // (copiado na tela interna de Formulários de Inscrição) pra qualquer empresa interessada.
 const CAMPOS_INICIAIS = { razao_social: "", cnpj: "", telefone: "", cidade: "", uf: "", email_contato: "" };
 
-// Conteúdo provisório — a equipe vai mandar o material oficial de benefícios pra substituir
-// isto (ver conversa de 2026-09-16). Estrutura genérica de parque científico/tecnológico.
+const CAMPO_CLARO_CLASSES =
+  "mt-1.5 w-full rounded-brand border border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30";
+
+// Benefícios oficiais de afiliação ao Pollen Parque Científico e Tecnológico — texto
+// institucional fornecido pela equipe (2026-09-17), mantido na íntegra (cláusulas
+// numeradas em algarismos romanos, sem paráfrase).
 const BENEFICIOS = [
   {
-    titulo: "Espaço físico no campus",
-    descricao: "Salas e áreas compartilhadas (coworking, auditório) dentro do Pollen Parque.",
+    numero: "I",
+    texto:
+      "Acesso à informações institucionais e participação preferencial em eventos promovidos pelo Pollen Parque Científico e Tecnológico.",
   },
   {
-    titulo: "Exposição institucional",
-    descricao: "Presença na comunicação e nos eventos do programa como empresa afiliada.",
+    numero: "II",
+    texto:
+      "Utilização dos espaços de coworking do Pollen Parque, mediante reserva prévia e conforme disponibilidade, limitada a até 12 (doze) acessos gratuitos por ano.",
   },
   {
-    titulo: "Rede de relacionamento",
-    descricao: "Acesso à comunidade de empresas, pesquisadores e parceiros do parque.",
+    numero: "III",
+    texto: "Direito a 1 (uma) reserva anual gratuita da Sala do Ático, mediante reserva prévia e conforme disponibilidade.",
   },
   {
-    titulo: "Suporte da equipe do programa",
-    descricao: "Acompanhamento dedicado durante todo o processo de afiliação e vigência do contrato.",
+    numero: "IV",
+    texto: "Direito a 1 (uma) reserva anual gratuita do Auditório Cooperativas, mediante reserva prévia e conforme disponibilidade.",
+  },
+  {
+    numero: "V",
+    texto:
+      "Acesso prioritário a informações relacionadas a editais de fomento, chamadas públicas e oportunidades de financiamento à inovação.",
+  },
+  {
+    numero: "VI",
+    texto:
+      "Exposição da marca da AFILIADA NÃO RESIDENTE no telão da recepção do Pollen Parque Científico e Tecnológico, de forma contínua, observados o padrão institucional e as diretrizes.",
+  },
+  {
+    numero: "VII",
+    texto: "Inserção da marca da AFILIADA NÃO RESIDENTE no espaço destinado aos afiliados no site institucional do Pollen Parque.",
+  },
+  {
+    numero: "VIII",
+    texto:
+      "Possibilidade de utilização de áreas comuns, laboratórios, unidades de pesquisas e outros espaços disponibilizados pela Unochapecó, mediante negociação prévia com o setor de Prestação de Serviços, observadas as normas internas e disponibilidade.",
+  },
+  {
+    numero: "IX",
+    texto:
+      "Integração à Rede Catarinense de Centros de Inovação (RCCI), podendo acessar oportunidades de conexão, programas, eventos, parcerias, serviços e infraestrutura pelos Centros Integrantes da Rede, conforme regras e disponibilidade de cada instituição.",
+  },
+  {
+    numero: "X",
+    texto:
+      "Concessão de desconto de 15% (quinze) sobre cotas de patrocínio para eventos promovidos pelo Pollen Parque, conforme condições e critérios definidos especificamente para cada evento.",
+  },
+  {
+    numero: "XI",
+    texto:
+      "Possibilidade de utilização de endereço fiscal, mediante análise e aprovação prévia da Diretoria Executiva do Pollen Parque, observada a legislação aplicável.",
+  },
+  {
+    numero: "XII",
+    texto:
+      "Emissão de declaração formal de vínculo institucional, a critério do Pollen Parque Científico, atestando a afiliação da empresa a ambiente de inovação integrante do sistema Catarinense de Inovação, para fins de comprovação institucional junto a editais, programas de fomento, agentes financiadores e demais oportunidades que exijam vinculação a Parques Científicos e Tecnológicos.",
+  },
+  {
+    numero: "XIII",
+    texto:
+      "Utilizar, quando solicitado e devidamente autorizado, os espaços temporariamente cedidos para reuniões, eventos ou atividades exclusivamente para os fins aprovados, responsabilizando-se por qualquer dano decorrente de uso indevido, bem como pelo pagamento das taxas aplicáveis, quando houver.",
   },
 ];
 
@@ -69,7 +119,7 @@ export default function InscricaoPage() {
 
   return (
     <div className="flex flex-1 justify-center bg-neutral-100 px-4 py-12">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-3xl">
         <div className="mb-8 text-center">
           <PollenLogo textClassName="text-4xl text-foreground" />
           <p className="mt-2 text-sm text-neutral-600">Inscrição de empresas afiliadas</p>
@@ -80,7 +130,7 @@ export default function InscricaoPage() {
             type="button"
             onClick={() => setAba("formulario")}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              aba === "formulario" ? "bg-primary text-primary-foreground" : "bg-white text-foreground hover:bg-neutral-100"
+              aba === "formulario" ? "bg-primary text-primary-foreground" : "bg-white text-neutral-700 hover:bg-gray-100"
             }`}
           >
             Formulário
@@ -89,7 +139,7 @@ export default function InscricaoPage() {
             type="button"
             onClick={() => setAba("beneficios")}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              aba === "beneficios" ? "bg-primary text-primary-foreground" : "bg-white text-foreground hover:bg-neutral-100"
+              aba === "beneficios" ? "bg-primary text-primary-foreground" : "bg-white text-neutral-700 hover:bg-gray-100"
             }`}
           >
             Benefícios de ser afiliado
@@ -98,11 +148,18 @@ export default function InscricaoPage() {
 
         {aba === "beneficios" && (
           <div className="rounded-brand bg-white p-6 shadow-sm">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <h1 className="font-display text-lg font-semibold text-black">Benefícios de ser um afiliado</h1>
+            <p className="mt-1 text-sm text-neutral-600">
+              Direitos garantidos às empresas afiliadas ao Pollen Parque Científico e Tecnológico.
+            </p>
+
+            <div className="mt-5 grid gap-3">
               {BENEFICIOS.map((beneficio) => (
-                <div key={beneficio.titulo} className="rounded-brand border border-secondary-subtle-border bg-secondary-subtle p-4">
-                  <p className="font-display font-semibold text-secondary-foreground">{beneficio.titulo}</p>
-                  <p className="mt-1 text-sm text-secondary-foreground/80">{beneficio.descricao}</p>
+                <div key={beneficio.numero} className="flex gap-4 rounded-brand border border-gray-200 bg-gray-50 p-4">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-white">
+                    {beneficio.numero}
+                  </span>
+                  <p className="text-sm leading-relaxed text-neutral-700">{beneficio.texto}</p>
                 </div>
               ))}
             </div>
@@ -111,41 +168,82 @@ export default function InscricaoPage() {
 
         {aba === "formulario" && !enviado && (
           <form onSubmit={handleSubmit} className="rounded-brand bg-white p-6 shadow-sm">
-            <h1 className="font-display text-lg font-semibold text-foreground">Dados da empresa</h1>
+            <h1 className="font-display text-lg font-semibold text-black">Dados da empresa</h1>
             <p className="mt-1 text-sm text-neutral-600">
               Preencha os dados abaixo — a equipe do Pollen Parque vai entrar em contato após a análise.
             </p>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Field label="Razão social" htmlFor="razao_social" className="sm:col-span-2">
-                <Input
+              <div className="sm:col-span-2">
+                <label htmlFor="razao_social" className="block text-sm font-medium text-black">
+                  Razão social
+                </label>
+                <input
                   id="razao_social"
                   required
                   value={campos.razao_social}
                   onChange={(e) => atualizarCampo("razao_social", e.target.value)}
+                  className={CAMPO_CLARO_CLASSES}
                 />
-              </Field>
-              <Field label="E-mail de contato" htmlFor="email_contato">
-                <Input
+              </div>
+              <div>
+                <label htmlFor="email_contato" className="block text-sm font-medium text-black">
+                  E-mail de contato
+                </label>
+                <input
                   id="email_contato"
                   type="email"
                   required
                   value={campos.email_contato}
                   onChange={(e) => atualizarCampo("email_contato", e.target.value)}
+                  className={CAMPO_CLARO_CLASSES}
                 />
-              </Field>
-              <Field label="CNPJ" htmlFor="cnpj">
-                <Input id="cnpj" value={campos.cnpj} onChange={(e) => atualizarCampo("cnpj", e.target.value)} />
-              </Field>
-              <Field label="Telefone" htmlFor="telefone">
-                <Input id="telefone" value={campos.telefone} onChange={(e) => atualizarCampo("telefone", e.target.value)} />
-              </Field>
-              <Field label="Cidade" htmlFor="cidade">
-                <Input id="cidade" value={campos.cidade} onChange={(e) => atualizarCampo("cidade", e.target.value)} />
-              </Field>
-              <Field label="UF" htmlFor="uf">
-                <Input id="uf" maxLength={2} value={campos.uf} onChange={(e) => atualizarCampo("uf", e.target.value.toUpperCase())} />
-              </Field>
+              </div>
+              <div>
+                <label htmlFor="cnpj" className="block text-sm font-medium text-black">
+                  CNPJ
+                </label>
+                <input
+                  id="cnpj"
+                  value={campos.cnpj}
+                  onChange={(e) => atualizarCampo("cnpj", e.target.value)}
+                  className={CAMPO_CLARO_CLASSES}
+                />
+              </div>
+              <div>
+                <label htmlFor="telefone" className="block text-sm font-medium text-black">
+                  Telefone
+                </label>
+                <input
+                  id="telefone"
+                  value={campos.telefone}
+                  onChange={(e) => atualizarCampo("telefone", e.target.value)}
+                  className={CAMPO_CLARO_CLASSES}
+                />
+              </div>
+              <div>
+                <label htmlFor="cidade" className="block text-sm font-medium text-black">
+                  Cidade
+                </label>
+                <input
+                  id="cidade"
+                  value={campos.cidade}
+                  onChange={(e) => atualizarCampo("cidade", e.target.value)}
+                  className={CAMPO_CLARO_CLASSES}
+                />
+              </div>
+              <div>
+                <label htmlFor="uf" className="block text-sm font-medium text-black">
+                  UF
+                </label>
+                <input
+                  id="uf"
+                  maxLength={2}
+                  value={campos.uf}
+                  onChange={(e) => atualizarCampo("uf", e.target.value.toUpperCase())}
+                  className={CAMPO_CLARO_CLASSES}
+                />
+              </div>
             </div>
 
             {erro && (

@@ -1,11 +1,23 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { FaArrowAltCircleDown } from "react-icons/fa";
 import { GrStatusGood } from "react-icons/gr";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea } from "@/components/form";
+import {
+  DangerButton,
+  EditButton,
+  ErrorText,
+  Field,
+  Input,
+  PrimaryButton,
+  Select,
+  SecondaryButton,
+  TextArea,
+  UploadButton,
+} from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
 import { abrirArquivoBase64, lerArquivoComoBase64 } from "@/lib/arquivo";
@@ -55,14 +67,9 @@ function UploadArquivo({
   onSelecionar: (file: File) => void;
   erro: string | null;
 }) {
-  async function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) onSelecionar(file);
-  }
-
   return (
     <div>
-      <input type="file" accept=".png,image/png,.pdf,application/pdf" onChange={handleChange} className="text-sm" />
+      <UploadButton onSelecionar={onSelecionar} accept=".png,image/png,.pdf,application/pdf" />
       {arquivoNome && <p className="mt-1 text-xs text-secondary-foreground">Selecionado: {arquivoNome}</p>}
       {erro && <p className="mt-1 text-xs text-danger">{erro}</p>}
     </div>
@@ -87,6 +94,7 @@ function LinhaDocumento({
     url_arquivo: documento.url_arquivo ?? "",
     observacoes: documento.observacoes ?? "",
   });
+  const pedirConfirmacao = useConfirm();
   const [arquivo, setArquivo] = useState<{ nome: string; mimetype: string; base64: string } | null>(null);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
@@ -140,7 +148,14 @@ function LinhaDocumento({
   }
 
   async function excluir() {
-    if (!window.confirm(`Excluir o documento "${documento.nome_arquivo}"?`)) return;
+    if (
+      !(await pedirConfirmacao({
+        mensagem: `Excluir o documento "${documento.nome_arquivo}"?`,
+        tone: "danger",
+        confirmarLabel: "Excluir",
+      }))
+    )
+      return;
     setProcessando(true);
     try {
       await apiFetch(`/documentos/${documento.id}`, { method: "PATCH", token, body: { ativo: false } });

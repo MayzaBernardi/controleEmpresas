@@ -2,12 +2,14 @@
 
 import { Children, isValidElement, useEffect, useRef, useState } from "react";
 import type {
+  ChangeEvent,
   InputHTMLAttributes,
   ReactElement,
   ReactNode,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { MdFileUpload } from "react-icons/md";
 import { ChevronDownIcon, PencilIcon, SearchIcon, TrashIcon } from "./icons";
 
 const CAMPO_CLASSES =
@@ -185,6 +187,43 @@ export function DangerButton({ className, children, ...props }: React.ButtonHTML
       <TrashIcon className="h-3.5 w-3.5" />
       {children}
     </button>
+  );
+}
+
+// Botão de anexar arquivo — o <input type="file"> nativo fica escondido (chrome do SO,
+// inconsistente entre navegadores) e um botão preenchido no padrão dos outros
+// (EditButton/DangerButton) dispara o seletor de arquivos por trás dele.
+export function UploadButton({
+  onSelecionar,
+  accept,
+  className,
+  children = "Escolher arquivo",
+}: {
+  onSelecionar: (file: File) => void;
+  accept?: string;
+  className?: string;
+  children?: ReactNode;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) onSelecionar(file);
+    event.target.value = "";
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className={`inline-flex items-center gap-1.5 rounded-full bg-blue-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-60 ${className ?? ""}`}
+      >
+        <MdFileUpload className="h-3.5 w-3.5" />
+        {children}
+      </button>
+      <input ref={inputRef} type="file" accept={accept} onChange={handleChange} className="hidden" />
+    </>
   );
 }
 

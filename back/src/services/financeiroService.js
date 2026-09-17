@@ -76,6 +76,8 @@ async function lancar(body, { usuario, models } = {}) {
     data_pagamento: body.data_pagamento ?? null,
     status_financeiro_id: statusFinanceiroId,
     comprovante_url: body.comprovante_url ?? null,
+    comprovante_mimetype: body.comprovante_mimetype ?? null,
+    comprovante_base64: body.comprovante_base64 ?? null,
     observacoes: body.observacoes ?? null,
   };
 

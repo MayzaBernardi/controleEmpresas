@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { usePaginacao } from "@/lib/usePaginacao";
@@ -88,6 +89,7 @@ function LinhaEmpresa({
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const pedirConfirmacao = useConfirm();
 
   function atualizarCampo<K extends keyof typeof campos>(campo: K, valor: string) {
     setCampos((atual) => ({ ...atual, [campo]: valor }));
@@ -108,7 +110,13 @@ function LinhaEmpresa({
   }
 
   async function excluir() {
-    if (!window.confirm(`Excluir "${empresa.razao_social}"? Ela sai das listagens, mas o histórico é mantido.`)) {
+    if (
+      !(await pedirConfirmacao({
+        mensagem: `Excluir "${empresa.razao_social}"? Ela sai das listagens, mas o histórico é mantido.`,
+        tone: "danger",
+        confirmarLabel: "Excluir",
+      }))
+    ) {
       return;
     }
     setSalvando(true);
