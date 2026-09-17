@@ -13,8 +13,15 @@ import type {
 import { MdFileUpload } from "react-icons/md";
 import { ChevronDownIcon, PencilIcon, SearchIcon, TrashIcon } from "./icons";
 
+// Padrão único de campo (2026-09-17, ajustado 2026-09-17: sem borda no repouso — a borda
+// cinza clara ficou destoando do fundo escuro do painel): fundo #394252, sem borda visível
+// até focar, usado em todo input/textarea/select do painel autenticado E no formulário
+// público de inscrição — antes existiam 3 estilos diferentes (este, mais uns campos brancos
+// com !important espalhados por alguns modais). CAMPO_CLASSES em app/inscricao/page.tsx
+// replica este mesmo valor pra fora do painel autenticado (não importa daqui pra não criar
+// dependência entre uma rota pública e um componente do painel logado).
 const CAMPO_CLASSES =
-  "w-full rounded-brand border border-neutral-100 px-3 py-2 text-sm text-foreground outline-none focus:border-secondary-foreground focus:ring-2 focus:ring-secondary disabled:opacity-60";
+  "w-full rounded-brand border border-transparent bg-[#394252] px-3 py-2 text-sm text-foreground outline-none focus:border-secondary-foreground focus:ring-2 focus:ring-secondary disabled:opacity-60";
 
 export function Field({
   label,

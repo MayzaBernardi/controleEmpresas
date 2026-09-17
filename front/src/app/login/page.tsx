@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
-import { useAuth, type Usuario } from "@/lib/auth";
+import { useAuth, rotaInicialPorPapel, type Usuario } from "@/lib/auth";
 import { PollenLogo } from "@/components/PollenLogo";
 
 interface LoginResposta {
@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!carregando && usuario) {
-      router.replace("/empresas");
+      router.replace(rotaInicialPorPapel(usuario.papel));
     }
   }, [carregando, usuario, router]);
 
@@ -41,7 +41,7 @@ export default function LoginPage() {
         body: { email, senha },
       });
       login(resposta.token, resposta.usuario);
-      router.push("/empresas");
+      router.push(rotaInicialPorPapel(resposta.usuario.papel));
     } catch (error) {
       setErro(error instanceof ApiError ? error.message : "Não foi possível conectar ao servidor.");
     } finally {
@@ -60,7 +60,7 @@ export default function LoginPage() {
         body: { email: devEmail },
       });
       login(resposta.token, resposta.usuario);
-      router.push("/empresas");
+      router.push(rotaInicialPorPapel(resposta.usuario.papel));
     } catch (error) {
       setDevErro(error instanceof ApiError ? error.message : "Não foi possível conectar ao servidor.");
     } finally {
@@ -69,12 +69,22 @@ export default function LoginPage() {
   }
 
   return (
-    // Mesmo fundo escuro do resto do sistema (bg-neutral-100, ver globals.css).
+    // Mesmo fundo escuro do resto do sistema (bg-neutral-100, ver globals.css) — o vídeo
+    // institucional (baixado de pollenparque.com.br, banner da home) fica atrás de tudo, com
+    // um véu escuro por cima pra manter o card branco e o texto legíveis.
     <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-neutral-100 px-4 py-16">
-      <div
-        className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-25 blur-[100px]"
-        style={{ background: "radial-gradient(circle, #cfff92 0%, transparent 70%)" }}
-      />
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        poster="/videos/pollen-banner-poster.jpg"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      >
+        <source src="/videos/pollen-banner.webm" type="video/webm" />
+        <source src="/videos/pollen-banner.mp4" type="video/mp4" />
+      </video>
+      <div className="pointer-events-none absolute inset-0 bg-black/70" />
 
       <div className="relative w-full max-w-sm">
         <div className="mb-10 text-center">
@@ -85,13 +95,8 @@ export default function LoginPage() {
           <p className="mt-4 text-sm text-white/50">Painel de gestão de afiliados</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-brand bg-white p-8 shadow-2xl shadow-black/40">
-          <h1 className="font-display text-xl font-semibold text-black">Entrar no painel</h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            Acesso institucional da equipe do Pollen Parque.
-          </p>
-
-          <label htmlFor="email" className="mt-6 block text-sm font-medium text-black">
+        <form onSubmit={handleSubmit} className="rounded-brand bg-neutral-100 p-8 shadow-2xl shadow-black/40">
+          <label htmlFor="email" className="block text-center text-sm font-medium text-foreground">
             E-mail institucional
           </label>
           <input
@@ -103,10 +108,10 @@ export default function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nome.sobrenome@pollenparque.org.br"
-            className="mt-2 w-full rounded-brand border border-gray-200 bg-white px-4 py-2.5 text-sm text-black outline-none focus:border-[#53663a] focus:ring-2 focus:ring-secondary"
+            className="mt-2 w-full rounded-brand border border-gray-300 bg-gray-200 px-4 py-2.5 text-sm text-black outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
           />
 
-          <label htmlFor="senha" className="mt-4 block text-sm font-medium text-black">
+          <label htmlFor="senha" className="mt-4 block text-center text-sm font-medium text-foreground">
             Senha
           </label>
           <input
@@ -117,7 +122,7 @@ export default function LoginPage() {
             value={senha}
             onChange={(event) => setSenha(event.target.value)}
             placeholder="••••••••"
-            className="mt-2 w-full rounded-brand border border-gray-200 bg-white px-4 py-2.5 text-sm text-black outline-none focus:border-[#53663a] focus:ring-2 focus:ring-secondary"
+            className="mt-2 w-full rounded-brand border border-gray-300 bg-gray-200 px-4 py-2.5 text-sm text-black outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
           />
 
           {erro && (
@@ -127,7 +132,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={enviando}
-            className="mt-6 w-full rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-black/85 disabled:opacity-60"
+            className="mt-6 w-full rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-secondary hover:text-on-secondary disabled:opacity-60"
           >
             {enviando ? "Entrando…" : "Entrar"}
           </button>

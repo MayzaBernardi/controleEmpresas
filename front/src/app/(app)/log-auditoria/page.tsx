@@ -72,10 +72,10 @@ export default function LogAuditoriaPage() {
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Quando</th>
-                <th className="px-4 py-3 font-bold">Entidade</th>
-                <th className="px-4 py-3 font-bold">Ação</th>
-                <th className="px-4 py-3 font-bold">Usuário</th>
+                <th className="px-4 py-3 text-left font-bold">Quando</th>
+                <th className="px-4 py-3 text-left font-bold">Entidade</th>
+                <th className="px-4 py-3 text-left font-bold">Ação</th>
+                <th className="px-4 py-3 text-left font-bold">Usuário</th>
               </tr>
             </thead>
             <tbody>

@@ -9,8 +9,11 @@ import { apiFetch, ApiError } from "@/lib/api";
 // (copiado na tela interna de Formulários de Inscrição) pra qualquer empresa interessada.
 const CAMPOS_INICIAIS = { razao_social: "", cnpj: "", telefone: "", cidade: "", uf: "", email_contato: "" };
 
-const CAMPO_CLARO_CLASSES =
-  "mt-1.5 w-full rounded-brand border border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30";
+// Mesmo padrão de campo do painel autenticado (CAMPO_CLASSES em components/form.tsx) —
+// duplicado aqui em vez de importado porque esta rota é pública e não deveria depender de um
+// componente pensado pro painel logado.
+const CAMPO_CLASSES =
+  "mt-1.5 w-full rounded-brand border border-transparent bg-[#394252] px-3 py-2 text-sm text-foreground outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/30";
 
 // Benefícios oficiais de afiliação ao Pollen Parque Científico e Tecnológico — texto
 // institucional fornecido pela equipe (2026-09-17), mantido na íntegra (cláusulas
@@ -187,7 +190,7 @@ export default function InscricaoPage() {
                   required
                   value={campos.razao_social}
                   onChange={(e) => atualizarCampo("razao_social", e.target.value)}
-                  className={CAMPO_CLARO_CLASSES}
+                  className={CAMPO_CLASSES}
                 />
               </div>
               <div>
@@ -200,7 +203,7 @@ export default function InscricaoPage() {
                   required
                   value={campos.email_contato}
                   onChange={(e) => atualizarCampo("email_contato", e.target.value)}
-                  className={CAMPO_CLARO_CLASSES}
+                  className={CAMPO_CLASSES}
                 />
               </div>
               <div>
@@ -211,7 +214,7 @@ export default function InscricaoPage() {
                   id="cnpj"
                   value={campos.cnpj}
                   onChange={(e) => atualizarCampo("cnpj", e.target.value)}
-                  className={CAMPO_CLARO_CLASSES}
+                  className={CAMPO_CLASSES}
                 />
               </div>
               <div>
@@ -222,7 +225,7 @@ export default function InscricaoPage() {
                   id="telefone"
                   value={campos.telefone}
                   onChange={(e) => atualizarCampo("telefone", e.target.value)}
-                  className={CAMPO_CLARO_CLASSES}
+                  className={CAMPO_CLASSES}
                 />
               </div>
               <div>
@@ -233,7 +236,7 @@ export default function InscricaoPage() {
                   id="cidade"
                   value={campos.cidade}
                   onChange={(e) => atualizarCampo("cidade", e.target.value)}
-                  className={CAMPO_CLARO_CLASSES}
+                  className={CAMPO_CLASSES}
                 />
               </div>
               <div>
@@ -245,7 +248,7 @@ export default function InscricaoPage() {
                   maxLength={2}
                   value={campos.uf}
                   onChange={(e) => atualizarCampo("uf", e.target.value.toUpperCase())}
-                  className={CAMPO_CLARO_CLASSES}
+                  className={CAMPO_CLASSES}
                 />
               </div>
             </div>
