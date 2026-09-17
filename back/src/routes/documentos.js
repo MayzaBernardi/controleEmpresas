@@ -7,7 +7,7 @@ const requireRole = require('../middlewares/requireRole');
 
 const router = Router();
 
-router.get('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada'), listar);
+router.get('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada', 'contabilidade'), listar);
 
 router.post('/', authMiddleware, requireRole('equipe_programa', 'empresa_afiliada'), upload);
 

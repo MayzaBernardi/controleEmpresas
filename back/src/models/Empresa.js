@@ -46,7 +46,7 @@ module.exports = (sequelize, DataTypes) => {
       status_processo: {
         type: DataTypes.STRING(50),
         allowNull: false,
-        defaultValue: 'inscricao_pendente',
+        defaultValue: 'contrato_elaboracao',
       },
       // FK para a tabela de referência status_processo (ADR 0005 §4). Mantida lado a lado
       // com o campo de texto livre acima — código novo deve preferir esta coluna, mas
@@ -77,6 +77,32 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       representante_legal: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      // Dados exigidos pelo template de emissão de contrato (contratosService.emitir) —
+      // opcionais aqui no cadastro, só passam a ser exigidos no momento de emitir.
+      endereco_logradouro: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      endereco_numero: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+      },
+      endereco_complemento: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+      },
+      endereco_bairro: {
+        type: DataTypes.STRING(150),
+        allowNull: true,
+      },
+      representante_legal_cpf: {
+        type: DataTypes.STRING(14),
+        allowNull: true,
+      },
+      representante_legal_email: {
         type: DataTypes.STRING(255),
         allowNull: true,
       },

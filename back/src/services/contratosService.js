@@ -1,12 +1,23 @@
 'use strict';
 
+const path = require('path');
 const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
 const auditoriaService = require('./auditoriaService');
+const gerarPdf = require('../utils/gerarPdf');
 
 const CODIGO_STATUS_ELABORACAO = 'elaboracao';
+const CODIGO_STATUS_EM_ASSINATURA = 'em_assinatura';
 const CODIGO_STATUS_VIGENTE = 'vigente';
 const DIAS_VIGENCIA_RENOVACAO = 365;
+
+// Fluxo real (remapeado 2026-09-17): equipe_programa emite o contrato (gera o PDF a partir
+// desta minuta padrão) → contabilidade baixa o PDF → envia pelo Satelitti (serviço externo de
+// assinatura eletrônica, fora do sistema) → quando volta assinado, a equipe marca vigente
+// manualmente (marcarVigente). Isso substitui o fluxo antigo de chamado na Procuradoria
+// Jurídica e de coleta de assinatura por pessoa (tabela/model Assinatura) — esses campos e
+// tabela continuam existindo no schema (histórico), só não são mais exigidos/usados aqui.
+const TEMPLATE_PATH = path.join(__dirname, '../../public/templates/minuta-contrato-afiliacao.docx');
 
 const CAMPOS_CRIACAO = [
   'empresa_id',
@@ -202,6 +213,124 @@ async function renovar(id, body, { usuario, models } = {}) {
   return novoContrato;
 }
 
+// RF-03 / fluxo remapeado: equipe_programa emite o contrato — gera o PDF preenchido a
+// partir da minuta padrão e o deixa pronto pra contabilidade baixar e enviar pelo Satelitti
+// (fora do sistema). Não depende de chamado na Procuradoria nem de assinaturas individuais.
+async function emitir(id, { usuario, models } = {}) {
+  const db = models || require('../models');
+  const contrato = await buscarPorId(id, { models: db });
+  const empresa = await db.Empresa.findByPk(contrato.empresa_id);
+  if (!empresa) {
+    throw new ApiError(404, 'Empresa vinculada ao contrato não encontrada.');
+  }
+
+  const emailContato = empresa.contatos?.email;
+  const faltantes = [];
+  if (!contrato.numero_termo) faltantes.push('numero_termo (do contrato)');
+  if (!empresa.razao_social) faltantes.push('razao_social (da empresa)');
+  if (!(empresa.cnpj || empresa.identificador_estrangeiro)) {
+    faltantes.push('cnpj ou identificador_estrangeiro (da empresa)');
+  }
+  if (!empresa.endereco_logradouro) faltantes.push('endereco_logradouro (da empresa)');
+  if (!empresa.endereco_numero) faltantes.push('endereco_numero (da empresa)');
+  if (!empresa.endereco_bairro) faltantes.push('endereco_bairro (da empresa)');
+  if (!empresa.cidade) faltantes.push('cidade (da empresa)');
+  if (!empresa.uf) faltantes.push('uf (da empresa)');
+  if (!empresa.telefone) faltantes.push('telefone (da empresa)');
+  if (!empresa.representante_legal) faltantes.push('representante_legal (da empresa)');
+  if (!empresa.representante_legal_cpf) faltantes.push('representante_legal_cpf (da empresa)');
+  if (!empresa.representante_legal_email) faltantes.push('representante_legal_email (da empresa)');
+  if (!emailContato) faltantes.push('contatos.email (da empresa)');
+
+  if (faltantes.length > 0) {
+    throw new ApiError(
+      400,
+      `Não é possível emitir o contrato — preencha antes: ${faltantes.join(', ')}.`
+    );
+  }
+
+  const dadosTemplate = {
+    NUMERO_TERMO: contrato.numero_termo,
+    EMPRESA_RAZAO_SOCIAL: empresa.razao_social,
+    EMPRESA_CNPJ: empresa.cnpj || empresa.identificador_estrangeiro,
+    EMPRESA_ENDERECO_LOGRADOURO: empresa.endereco_logradouro,
+    EMPRESA_ENDERECO_NUMERO: empresa.endereco_numero,
+    EMPRESA_ENDERECO_COMPLEMENTO: empresa.endereco_complemento,
+    EMPRESA_ENDERECO_BAIRRO: empresa.endereco_bairro,
+    EMPRESA_CIDADE: empresa.cidade,
+    EMPRESA_UF: empresa.uf,
+    EMPRESA_TELEFONE: empresa.telefone,
+    REPRESENTANTE_NOME: empresa.representante_legal,
+    REPRESENTANTE_CPF: empresa.representante_legal_cpf,
+    REPRESENTANTE_EMAIL: empresa.representante_legal_email,
+    REPRESENTANTE_TELEFONE: empresa.telefone,
+    EMPRESA_EMAIL_CONTATO: emailContato,
+    VALOR_ANUIDADE: Number(contrato.valor_anuidade).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+    VALOR_ANUIDADE_EXTENSO: gerarPdf.numeroPorExtenso(contrato.valor_anuidade),
+  };
+
+  const pdfBase64 = await gerarPdf(TEMPLATE_PATH, dadosTemplate);
+  const statusEmAssinatura = await buscarStatusContratoPorCodigo(CODIGO_STATUS_EM_ASSINATURA, { models: db });
+
+  contrato.arquivo_base64 = pdfBase64;
+  contrato.arquivo_mimetype = 'application/pdf';
+  contrato.arquivo_nome = `contrato-${contrato.numero_termo}.pdf`;
+  contrato.status_contrato_id = statusEmAssinatura.id;
+
+  const resultado = await wrapSequelizeErrors(contrato.save());
+  await auditoriaService.registrar({
+    entidade: 'contratos',
+    entidadeId: contrato.id,
+    acao: 'update',
+    usuario,
+    dadosNovos: { status_contrato_id: statusEmAssinatura.id, arquivo_nome: contrato.arquivo_nome },
+    models: db,
+  });
+
+  // RN-06: emitir o contrato é o gatilho que tira a empresa de 'contrato_elaboracao' e a
+  // leva para 'ativa' — efeito colateral automático, sem endpoint próprio para setar isso
+  // manualmente. Idempotente: se já estava 'ativa' (reemissão), não regrava nem audita de novo.
+  if (empresa.status_processo !== 'ativa') {
+    const statusProcessoAnterior = empresa.status_processo;
+    empresa.status_processo = 'ativa';
+    await wrapSequelizeErrors(empresa.save());
+    await auditoriaService.registrar({
+      entidade: 'empresas',
+      entidadeId: empresa.id,
+      acao: 'update',
+      usuario,
+      dadosAnteriores: { status_processo: statusProcessoAnterior },
+      dadosNovos: { status_processo: 'ativa' },
+      models: db,
+    });
+  }
+
+  return resultado;
+}
+
+// Confirmação manual da equipe_programa de que o contrato voltou assinado do Satelitti
+// (serviço externo, fora do sistema) — sem validação extra além de o contrato existir.
+async function marcarVigente(id, { usuario, models } = {}) {
+  const db = models || require('../models');
+  const contrato = await buscarPorId(id, { models: db });
+  const statusVigente = await buscarStatusContratoPorCodigo(CODIGO_STATUS_VIGENTE, { models: db });
+
+  contrato.status_contrato_id = statusVigente.id;
+  const resultado = await wrapSequelizeErrors(contrato.save());
+  await auditoriaService.registrar({
+    entidade: 'contratos',
+    entidadeId: contrato.id,
+    acao: 'update',
+    usuario,
+    dadosNovos: { status_contrato_id: statusVigente.id },
+    models: db,
+  });
+  return resultado;
+}
+
 module.exports = {
   listar,
   buscarPorId,
@@ -209,4 +338,6 @@ module.exports = {
   gerar,
   atualizar,
   renovar,
+  emitir,
+  marcarVigente,
 };

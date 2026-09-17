@@ -305,6 +305,7 @@ export default function DocumentosPage() {
   const { usuario } = useAuth();
   const podeGerenciar = usuario?.papel === "equipe_programa";
   const ehEmpresaAfiliada = usuario?.papel === "empresa_afiliada";
+  const podeCadastrar = usuario?.papel === "equipe_programa" || usuario?.papel === "empresa_afiliada";
 
   const { dados: documentos, erro, recarregar, token } = useApiResource<Documento[]>("/documentos");
   const { dados: empresas } = useApiResource<Empresa[]>(ehEmpresaAfiliada ? null : "/empresas");
@@ -372,15 +373,17 @@ export default function DocumentosPage() {
     <div>
       <PageHeader
         title="Documentos"
-        subtitle="Documentos exigidos pelo edital, vinculados às empresas."
+        subtitle="Documentos vinculados às empresas."
         action={
-          <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
-            {formAberto ? "Cancelar" : "Registrar documento"}
-          </SecondaryButton>
+          podeCadastrar && (
+            <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
+              {formAberto ? "Cancelar" : "Registrar documento"}
+            </SecondaryButton>
+          )
         }
       />
 
-      {formAberto && (
+      {podeCadastrar && formAberto && (
         <form onSubmit={handleSubmit} className="mb-6 rounded-brand border border-neutral-100 p-5">
           <div className="grid gap-4 md:grid-cols-2">
             {!ehEmpresaAfiliada && (

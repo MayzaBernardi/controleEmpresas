@@ -34,17 +34,21 @@ interface Empresa {
   cidade: string | null;
   uf: string | null;
   telefone: string | null;
+  endereco_logradouro: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
   representante_legal: string | null;
+  representante_legal_cpf: string | null;
+  representante_legal_email: string | null;
   observacoes: string | null;
 }
 
-// RN-06 ⚠️: nomes/transições de status_processo ainda não confirmados com o negócio — só
-// os valores conhecidos do seed (back/src/seeders) têm rótulo/cor; o resto cai no formatador
-// genérico em vez de quebrar.
+// RN-06: status_processo tem só estes 3 valores. Empresa nasce em contrato_elaboracao,
+// vira ativa automaticamente quando um contrato dela é emitido (RN-46, back cuida sozinho),
+// e encerrada é calculado pelo back em tempo de leitura (não é editável manualmente aqui).
 const STATUS_INFO: Record<string, { rotulo: string; variante: "secondary" | "warning" | "neutral" }> = {
-  inscricao_pendente: { rotulo: "Inscrição pendente", variante: "warning" },
   contrato_elaboracao: { rotulo: "Contrato em elaboração", variante: "warning" },
-  aguardando_assinatura: { rotulo: "Aguardando assinatura", variante: "warning" },
   ativa: { rotulo: "Ativa", variante: "secondary" },
   encerrada: { rotulo: "Encerrada", variante: "neutral" },
 };
@@ -58,7 +62,13 @@ const CAMPOS_INICIAIS = {
   cidade: "",
   uf: "",
   telefone: "",
+  endereco_logradouro: "",
+  endereco_numero: "",
+  endereco_complemento: "",
+  endereco_bairro: "",
   representante_legal: "",
+  representante_legal_cpf: "",
+  representante_legal_email: "",
   observacoes: "",
 };
 
@@ -87,7 +97,13 @@ function LinhaEmpresa({
     cidade: empresa.cidade ?? "",
     uf: empresa.uf ?? "",
     telefone: empresa.telefone ?? "",
+    endereco_logradouro: empresa.endereco_logradouro ?? "",
+    endereco_numero: empresa.endereco_numero ?? "",
+    endereco_complemento: empresa.endereco_complemento ?? "",
+    endereco_bairro: empresa.endereco_bairro ?? "",
     representante_legal: empresa.representante_legal ?? "",
+    representante_legal_cpf: empresa.representante_legal_cpf ?? "",
+    representante_legal_email: empresa.representante_legal_email ?? "",
     observacoes: empresa.observacoes ?? "",
   });
   const [salvando, setSalvando] = useState(false);
@@ -205,11 +221,54 @@ function LinhaEmpresa({
                   onChange={(e) => atualizarCampo("telefone", e.target.value)}
                 />
               </Field>
+              <Field label="Logradouro" htmlFor={`logradouro-${empresa.id}`}>
+                <Input
+                  id={`logradouro-${empresa.id}`}
+                  value={campos.endereco_logradouro}
+                  onChange={(e) => atualizarCampo("endereco_logradouro", e.target.value)}
+                />
+              </Field>
+              <Field label="Número" htmlFor={`numero-${empresa.id}`}>
+                <Input
+                  id={`numero-${empresa.id}`}
+                  value={campos.endereco_numero}
+                  onChange={(e) => atualizarCampo("endereco_numero", e.target.value)}
+                />
+              </Field>
+              <Field label="Complemento" htmlFor={`complemento-${empresa.id}`}>
+                <Input
+                  id={`complemento-${empresa.id}`}
+                  value={campos.endereco_complemento}
+                  onChange={(e) => atualizarCampo("endereco_complemento", e.target.value)}
+                />
+              </Field>
+              <Field label="Bairro" htmlFor={`bairro-${empresa.id}`}>
+                <Input
+                  id={`bairro-${empresa.id}`}
+                  value={campos.endereco_bairro}
+                  onChange={(e) => atualizarCampo("endereco_bairro", e.target.value)}
+                />
+              </Field>
               <Field label="Representante legal" htmlFor={`repr-${empresa.id}`}>
                 <Input
                   id={`repr-${empresa.id}`}
                   value={campos.representante_legal}
                   onChange={(e) => atualizarCampo("representante_legal", e.target.value)}
+                />
+              </Field>
+              <Field label="CPF do representante" htmlFor={`repr-cpf-${empresa.id}`}>
+                <Input
+                  id={`repr-cpf-${empresa.id}`}
+                  value={campos.representante_legal_cpf}
+                  onChange={(e) => atualizarCampo("representante_legal_cpf", e.target.value)}
+                />
+              </Field>
+              <Field label="E-mail do representante" htmlFor={`repr-email-${empresa.id}`}>
+                <Input
+                  id={`repr-email-${empresa.id}`}
+                  type="email"
+                  value={campos.representante_legal_email}
+                  onChange={(e) => atualizarCampo("representante_legal_email", e.target.value)}
                 />
               </Field>
             </div>
@@ -297,7 +356,13 @@ export default function EmpresasPage() {
           cidade: campos.cidade || null,
           uf: campos.uf || null,
           telefone: campos.telefone || null,
+          endereco_logradouro: campos.endereco_logradouro || null,
+          endereco_numero: campos.endereco_numero || null,
+          endereco_complemento: campos.endereco_complemento || null,
+          endereco_bairro: campos.endereco_bairro || null,
           representante_legal: campos.representante_legal || null,
+          representante_legal_cpf: campos.representante_legal_cpf || null,
+          representante_legal_email: campos.representante_legal_email || null,
           observacoes: campos.observacoes || null,
         },
       });
@@ -387,11 +452,54 @@ export default function EmpresasPage() {
           <Field label="Telefone" htmlFor="telefone">
             <Input id="telefone" value={campos.telefone} onChange={(e) => atualizarCampo("telefone", e.target.value)} />
           </Field>
+          <Field label="Logradouro" htmlFor="endereco_logradouro">
+            <Input
+              id="endereco_logradouro"
+              value={campos.endereco_logradouro}
+              onChange={(e) => atualizarCampo("endereco_logradouro", e.target.value)}
+            />
+          </Field>
+          <Field label="Número" htmlFor="endereco_numero">
+            <Input
+              id="endereco_numero"
+              value={campos.endereco_numero}
+              onChange={(e) => atualizarCampo("endereco_numero", e.target.value)}
+            />
+          </Field>
+          <Field label="Complemento" htmlFor="endereco_complemento">
+            <Input
+              id="endereco_complemento"
+              value={campos.endereco_complemento}
+              onChange={(e) => atualizarCampo("endereco_complemento", e.target.value)}
+            />
+          </Field>
+          <Field label="Bairro" htmlFor="endereco_bairro">
+            <Input
+              id="endereco_bairro"
+              value={campos.endereco_bairro}
+              onChange={(e) => atualizarCampo("endereco_bairro", e.target.value)}
+            />
+          </Field>
           <Field label="Representante legal" htmlFor="representante_legal">
             <Input
               id="representante_legal"
               value={campos.representante_legal}
               onChange={(e) => atualizarCampo("representante_legal", e.target.value)}
+            />
+          </Field>
+          <Field label="CPF do representante" htmlFor="representante_legal_cpf">
+            <Input
+              id="representante_legal_cpf"
+              value={campos.representante_legal_cpf}
+              onChange={(e) => atualizarCampo("representante_legal_cpf", e.target.value)}
+            />
+          </Field>
+          <Field label="E-mail do representante" htmlFor="representante_legal_email">
+            <Input
+              id="representante_legal_email"
+              type="email"
+              value={campos.representante_legal_email}
+              onChange={(e) => atualizarCampo("representante_legal_email", e.target.value)}
             />
           </Field>
           <Field label="Observações" htmlFor="observacoes" className="sm:col-span-2">

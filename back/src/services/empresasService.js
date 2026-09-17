@@ -19,6 +19,12 @@ const CAMPOS_CRIACAO = [
   'cidade',
   'uf',
   'representante_legal',
+  'endereco_logradouro',
+  'endereco_numero',
+  'endereco_complemento',
+  'endereco_bairro',
+  'representante_legal_cpf',
+  'representante_legal_email',
 ];
 
 // 'ativo' só é atualizável, nunca setável na criação (toda empresa nova começa ativa) —
@@ -35,9 +41,48 @@ function somenteCamposPermitidos(body, camposPermitidos) {
   return dados;
 }
 
+/**
+ * RN-06: 'encerrada' nunca é gravado na coluna — é o mesmo padrão de estado derivado de
+ * data já usado em RN-30 (Contrato.estaVencido/estaProximoVencimento, calculado em
+ * leitura), só que aqui a computação exige cruzar com Contrato (Empresa não tem acesso
+ * direto às datas do contrato via getter próprio), então fica no service em vez de hook
+ * de model — no mesmo espírito de contratosService.listarRenovacaoPendente (query +
+ * filtro em JS). Reescreve status_processo só no objeto em memória (nunca .save() aqui):
+ * uma empresa persistida como 'ativa' aparece como 'encerrada' na resposta da API quando
+ * nenhum contrato dela (ativo, não soft-deletado) está 'em_assinatura' ou 'vigente' e
+ * ainda dentro da vigência.
+ */
+async function aplicarStatusEncerradaPorVencimento(empresas, db) {
+  const listaEmpresas = Array.isArray(empresas) ? empresas : [empresas];
+  const idsAtivas = listaEmpresas.filter((empresa) => empresa.status_processo === 'ativa').map((empresa) => empresa.id);
+  if (idsAtivas.length === 0) return empresas;
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const contratos = await db.Contrato.findAll({
+    where: { empresa_id: idsAtivas, ativo: true },
+    include: [{ model: db.StatusContrato, as: 'statusContrato', attributes: ['codigo'] }],
+  });
+
+  const empresasComContratoValido = new Set();
+  for (const contrato of contratos) {
+    const codigo = contrato.statusContrato?.codigo;
+    if (codigo === 'em_assinatura') empresasComContratoValido.add(contrato.empresa_id);
+    if (codigo === 'vigente' && contrato.data_termino_vigencia >= hoje) empresasComContratoValido.add(contrato.empresa_id);
+  }
+
+  for (const empresa of listaEmpresas) {
+    if (empresa.status_processo === 'ativa' && !empresasComContratoValido.has(empresa.id)) {
+      empresa.status_processo = 'encerrada'; // só no objeto em memória — nunca .save() aqui
+    }
+  }
+  return empresas;
+}
+
 async function listar({ models } = {}) {
   const db = models || require('../models');
-  return db.Empresa.findAll({ where: { ativo: true }, order: [['razao_social', 'ASC']] });
+  const empresas = await db.Empresa.findAll({ where: { ativo: true }, order: [['razao_social', 'ASC']] });
+  await aplicarStatusEncerradaPorVencimento(empresas, db);
+  return empresas;
 }
 
 async function buscarPorId(id, { models } = {}) {
@@ -46,6 +91,7 @@ async function buscarPorId(id, { models } = {}) {
   if (!empresa) {
     throw new ApiError(404, 'Empresa não encontrada.');
   }
+  await aplicarStatusEncerradaPorVencimento(empresa, db);
   return empresa;
 }
 

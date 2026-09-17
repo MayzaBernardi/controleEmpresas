@@ -1,10 +1,21 @@
 # Assinatura
 
+> **Histórico/aposentada (ADR 0008, 2026-09-17)**: esta tabela e as regras
+> RN-09/RN-10 abaixo descreviam um fluxo de coleta de assinatura pessoa a
+> pessoa que **não é o fluxo real** — a assinatura de um contrato acontece
+> inteiramente fora do sistema, por um serviço eletrônico externo
+> ("Satelitti"). O fluxo ativo hoje é `contratosService.emitir` →
+> contabilidade baixa e envia externamente → `contratosService.marcarVigente`
+> (RN-46/RN-47, ver [`contrato.md`](./contrato.md)). A tabela `assinaturas` e
+> o model `Assinatura` **não foram removidos** (contratos antigos podem ter
+> linhas aqui) e nunca tiveram tela própria no front — só deixaram de ser
+> alimentados pelo fluxo novo. Nenhum código novo deve escrever nesta tabela.
+
 Tabela: `assinaturas` · Model: [`Assinatura`](../../back/src/models/Assinatura.js) ·
 Migration: [`20260915000007-create-assinaturas.js`](../../back/src/migrations/20260915000007-create-assinaturas.js)
 
 Signatário de um contrato — representante legal, os 3 assinantes
-institucionais e o reitor (RN-09).
+institucionais e o reitor (RN-09, aposentada).
 
 ## Campos
 

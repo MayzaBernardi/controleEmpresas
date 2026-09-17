@@ -102,10 +102,13 @@ module.exports = {
       { key: 'ventus', razao_social: 'Ventus Energias Renováveis Ltda', nome_fantasia: 'Ventus', estagio: 'encerrada' },
     ];
 
+    // RN-06 (2026-09-17): só 3 valores de status_processo existem — contrato_elaboracao,
+    // ativa, encerrada. Estágios "formulario" (sem cadastro de contrato ainda) e "assinatura"
+    // (contrato já emitido, aguardando volta do Satelitti) mapeiam pro mais próximo dos 3.
     const STATUS_PROCESSO_POR_ESTAGIO = {
-      formulario: 'inscricao_pendente',
+      formulario: 'contrato_elaboracao',
       elaboracao: 'contrato_elaboracao',
-      assinatura: 'aguardando_assinatura',
+      assinatura: 'ativa',
       ativo: 'ativa',
       inadimplente: 'ativa',
       renovacao_pendente: 'ativa',
