@@ -301,10 +301,10 @@ export default function UsuariosPage() {
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Usuário</th>
-                <th className="px-4 py-3 font-bold">Papel</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold" />
+                <th className="px-4 py-3 text-left font-bold">Usuário</th>
+                <th className="px-4 py-3 text-left font-bold">Papel</th>
+                <th className="px-4 py-3 text-left font-bold">Status</th>
+                <th className="px-4 py-3 text-left font-bold" />
               </tr>
             </thead>
             <tbody>

@@ -4,6 +4,18 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 export type Papel = "equipe_programa" | "empresa_afiliada" | "contabilidade";
 
+// Primeiro módulo do menu de cada papel (ver MODULOS_* em app/(app)/layout.tsx) — usado para
+// saber pra onde mandar o usuário logo após o login, em vez de sempre cair em /empresas.
+const ROTA_INICIAL_POR_PAPEL: Record<Papel, string> = {
+  contabilidade: "/financeiro-lancamentos",
+  empresa_afiliada: "/minha-empresa",
+  equipe_programa: "/empresas",
+};
+
+export function rotaInicialPorPapel(papel: Papel): string {
+  return ROTA_INICIAL_POR_PAPEL[papel] ?? "/empresas";
+}
+
 export interface Usuario {
   id: number;
   nome: string;

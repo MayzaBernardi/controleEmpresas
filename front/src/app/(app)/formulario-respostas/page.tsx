@@ -131,24 +131,22 @@ function ModalDetalhesFormulario({
               </p>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field label="Razão social" htmlFor="nova-empresa-razao_social" className="text-center">
+                <Field label="Razão social" htmlFor="nova-empresa-razao_social">
                   <Input
                     id="nova-empresa-razao_social"
                     required
                     value={campos.razao_social}
                     onChange={(e) => atualizarCampo("razao_social", e.target.value)}
-                    className="border-black! bg-white! text-center text-black!"
                   />
                 </Field>
-                <Field label="Nome fantasia" htmlFor="nova-empresa-nome_fantasia" className="text-center">
+                <Field label="Nome fantasia" htmlFor="nova-empresa-nome_fantasia">
                   <Input
                     id="nova-empresa-nome_fantasia"
                     value={campos.nome_fantasia}
                     onChange={(e) => atualizarCampo("nome_fantasia", e.target.value)}
-                    className="border-black! bg-white! text-center text-black!"
                   />
                 </Field>
-                <Field label="Tipo" htmlFor="nova-empresa-tipo_empresa" className="text-center">
+                <Field label="Tipo" htmlFor="nova-empresa-tipo_empresa">
                   <Select
                     id="nova-empresa-tipo_empresa"
                     value={campos.tipo_empresa}
@@ -159,53 +157,47 @@ function ModalDetalhesFormulario({
                   </Select>
                 </Field>
                 {campos.tipo_empresa === "nacional" ? (
-                  <Field label="CNPJ" htmlFor="nova-empresa-cnpj" className="text-center">
+                  <Field label="CNPJ" htmlFor="nova-empresa-cnpj">
                     <Input
                       id="nova-empresa-cnpj"
                       required
                       value={campos.cnpj}
                       onChange={(e) => atualizarCampo("cnpj", e.target.value)}
-                      className="border-black! bg-white! text-center text-black!"
                     />
                   </Field>
                 ) : (
                   <Field
                     label="Identificador estrangeiro"
                     htmlFor="nova-empresa-identificador_estrangeiro"
-                    className="text-center"
                   >
                     <Input
                       id="nova-empresa-identificador_estrangeiro"
                       required
                       value={campos.identificador_estrangeiro}
                       onChange={(e) => atualizarCampo("identificador_estrangeiro", e.target.value)}
-                      className="border-black! bg-white! text-center text-black!"
                     />
                   </Field>
                 )}
-                <Field label="Telefone" htmlFor="nova-empresa-telefone" className="text-center">
+                <Field label="Telefone" htmlFor="nova-empresa-telefone">
                   <Input
                     id="nova-empresa-telefone"
                     value={campos.telefone}
                     onChange={(e) => atualizarCampo("telefone", e.target.value)}
-                    className="border-black! bg-white! text-center text-black!"
                   />
                 </Field>
-                <Field label="Cidade" htmlFor="nova-empresa-cidade" className="text-center">
+                <Field label="Cidade" htmlFor="nova-empresa-cidade">
                   <Input
                     id="nova-empresa-cidade"
                     value={campos.cidade}
                     onChange={(e) => atualizarCampo("cidade", e.target.value)}
-                    className="border-black! bg-white! text-center text-black!"
                   />
                 </Field>
-                <Field label="UF" htmlFor="nova-empresa-uf" className="text-center">
+                <Field label="UF" htmlFor="nova-empresa-uf">
                   <Input
                     id="nova-empresa-uf"
                     maxLength={2}
                     value={campos.uf}
                     onChange={(e) => atualizarCampo("uf", e.target.value.toUpperCase())}
-                    className="border-black! bg-white! text-center text-black!"
                   />
                 </Field>
               </div>
@@ -299,10 +291,10 @@ export default function FormularioRespostasPage() {
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Empresa</th>
-                <th className="px-4 py-3 font-bold">E-mail de contato</th>
-                <th className="px-4 py-3 font-bold">Recebido em</th>
-                <th className="px-4 py-3 font-bold">Triagem</th>
+                <th className="px-4 py-3 text-left font-bold">Empresa</th>
+                <th className="px-4 py-3 text-left font-bold">E-mail de contato</th>
+                <th className="px-4 py-3 text-left font-bold">Recebido em</th>
+                <th className="px-4 py-3 text-left font-bold">Triagem</th>
                 <th className="px-4 py-3 font-bold text-right">Ações</th>
               </tr>
             </thead>

@@ -7,7 +7,7 @@ import { TbReportMoneyFilled } from "react-icons/tb";
 import { Badge } from "@/components/Badge";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, UploadButton } from "@/components/form";
+import { ErrorText, Field, Input, PrimaryButton, Select, UploadButton } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { abrirArquivoBase64, lerArquivoComoBase64 } from "@/lib/arquivo";
@@ -99,15 +99,15 @@ function BotaoConfirmarPagamento({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <SecondaryButton
+      <button
         type="button"
         onClick={confirmar}
         disabled={confirmando}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
+        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-on-secondary transition-colors hover:bg-[#15803d] disabled:opacity-60"
       >
         <GiConfirmed className="h-3.5 w-3.5" />
         {confirmando ? "Confirmando…" : "Confirmar pagamento"}
-      </SecondaryButton>
+      </button>
       {erro && <p className="text-xs text-danger">{erro}</p>}
     </div>
   );
@@ -191,7 +191,7 @@ export default function FinanceiroPage() {
         subtitle={
           podeLancar
             ? "Cadastro de boleto/nota fiscal"
-            : "Leitura dos lançamentos — cadastrados pela contabilidade. Nota fiscal já entra como paga na data do cadastro; boleto fica pendente até a confirmação manual do pagamento."
+            : "Leitura dos lançamentos — cadastrados pela contabilidade."
         }
         action={
           <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ export default function FinanceiroPage() {
           </Field>
 
           <div className="sm:col-span-2">
-            <p className="mb-1.5 text-sm font-medium text-foreground">Foto da nota/boleto (opcional)</p>
+            <p className="mb-1.5 text-sm font-medium text-foreground">Arquivo da nota/boleto (opcional)</p>
             <UploadArquivo arquivoNome={arquivo?.nome ?? null} onSelecionar={selecionarArquivo} erro={erroArquivo} />
           </div>
 
@@ -331,13 +331,13 @@ export default function FinanceiroPage() {
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Empresa</th>
-                <th className="px-4 py-3 font-bold">Tipo</th>
-                <th className="px-4 py-3 font-bold">Valor</th>
-                <th className="px-4 py-3 font-bold">Vencimento</th>
-                <th className="px-4 py-3 font-bold">Forma</th>
-                <th className="px-4 py-3 font-bold">Nota/boleto</th>
-                <th className="px-4 py-3 font-bold">Situação</th>
+                <th className="px-4 py-3 text-left font-bold">Empresa</th>
+                <th className="px-4 py-3 text-left font-bold">Tipo</th>
+                <th className="px-4 py-3 text-left font-bold">Valor</th>
+                <th className="px-4 py-3 text-left font-bold">Vencimento</th>
+                <th className="px-4 py-3 text-left font-bold">Forma</th>
+                <th className="px-4 py-3 text-left font-bold">Nota/boleto</th>
+                <th className="px-4 py-3 text-left font-bold">Situação</th>
                 {podeLancar && <th className="px-4 py-3 font-bold text-right">Ações</th>}
               </tr>
             </thead>
@@ -364,7 +364,7 @@ export default function FinanceiroPage() {
                         }
                         className="text-secondary-foreground hover:underline"
                       >
-                        Ver foto
+                        Ver arquivo
                       </button>
                     ) : (
                       <span className="text-neutral-600">—</span>

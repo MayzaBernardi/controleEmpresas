@@ -565,10 +565,10 @@ export default function EmpresasPage() {
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead>
                 <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                  <th className="px-4 py-3 font-bold">Empresa</th>
-                  <th className="px-4 py-3 font-bold">CNPJ / Identificador</th>
-                  <th className="px-4 py-3 font-bold">Cidade/UF</th>
-                  <th className="px-4 py-3 font-bold">Status</th>
+                  <th className="px-4 py-3 text-left font-bold">Empresa</th>
+                  <th className="px-4 py-3 text-left font-bold">CNPJ / Identificador</th>
+                  <th className="px-4 py-3 text-left font-bold">Cidade/UF</th>
+                  <th className="px-4 py-3 text-left font-bold">Status</th>
                   <th className="px-4 py-3 font-bold text-right">Ações</th>
                 </tr>
               </thead>

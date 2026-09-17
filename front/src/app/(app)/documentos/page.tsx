@@ -373,7 +373,7 @@ export default function DocumentosPage() {
     <div>
       <PageHeader
         title="Documentos"
-        subtitle="Documentos vinculados às empresas."
+        subtitle="Documentos gerais"
         action={
           podeCadastrar && (
             <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
@@ -474,11 +474,11 @@ export default function DocumentosPage() {
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
-                <th className="px-4 py-3 font-bold">Tipo</th>
-                <th className="px-4 py-3 font-bold">Arquivo</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold" />
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 text-left font-bold">Empresa</th>}
+                <th className="px-4 py-3 text-left font-bold">Tipo</th>
+                <th className="px-4 py-3 text-left font-bold">Arquivo</th>
+                <th className="px-4 py-3 text-left font-bold">Status</th>
+                <th className="px-4 py-3 text-left font-bold" />
               </tr>
             </thead>
             <tbody>

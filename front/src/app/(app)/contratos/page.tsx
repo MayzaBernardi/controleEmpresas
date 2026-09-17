@@ -70,8 +70,12 @@ const CAMPOS_EMISSAO = [
 
 type ChaveCampoEmissao = (typeof CAMPOS_EMISSAO)[number]["chave"];
 
-function valorAtualCampoEmissao(chave: ChaveCampoEmissao, contrato: Contrato, empresa: Empresa | undefined): string {
-  if (chave === "numero_termo") return contrato.numero_termo ?? "";
+function valorAtualCampoEmissao(
+  chave: ChaveCampoEmissao,
+  contrato: Contrato | null,
+  empresa: Empresa | undefined
+): string {
+  if (chave === "numero_termo") return contrato?.numero_termo ?? "";
   if (chave === "cnpj") return empresa?.cnpj ?? empresa?.identificador_estrangeiro ?? "";
   if (chave === "email_contato") return empresa?.contatos?.email ?? "";
   return (empresa?.[chave] as string | null | undefined) ?? "";
@@ -135,6 +139,22 @@ function UploadArquivo({
 // mensagem de erro do backend e obrigar a ir editar em outra tela. Mesmo padrão visual do
 // overlay/cartão de `ConfirmDialog` (@/components/ConfirmDialog), só mais largo por ter um
 // formulário em vez de uma pergunta simples.
+function somarDiasISO(dataISO: string, dias: number): string {
+  const data = new Date(`${dataISO}T00:00:00.000Z`);
+  data.setUTCDate(data.getUTCDate() + dias);
+  return data.toISOString().slice(0, 10);
+}
+
+function hojeISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+const DIAS_VIGENCIA_RENOVACAO = 365;
+
+// Também cobre o caso de contrato vencido (RN: emitir termo de um contrato vencido renova a
+// vigência) — quando `contrato.estaVencido`, mostra um aviso e exige as novas datas de
+// vigência antes de emitir; o PATCH de vigência vai junto com o de numero_termo. Continua
+// servindo pro caso original (contrato em dia, só faltando dados cadastrais pra emissão).
 function ModalCompletarDadosEmissao({
   contrato,
   empresa,
@@ -148,6 +168,7 @@ function ModalCompletarDadosEmissao({
   onFechar: () => void;
   onEmitido: () => void;
 }) {
+  const precisaRenovarVigencia = contrato.estaVencido;
   const [campos, setCampos] = useState<Record<ChaveCampoEmissao, string>>(() => {
     const iniciais = {} as Record<ChaveCampoEmissao, string>;
     for (const campo of CAMPOS_EMISSAO) {
@@ -155,11 +176,21 @@ function ModalCompletarDadosEmissao({
     }
     return iniciais;
   });
+  const [vigencia, setVigencia] = useState(() => ({
+    data_inicio_vigencia: precisaRenovarVigencia ? hojeISO() : contrato.data_inicio_vigencia,
+    data_termino_vigencia: precisaRenovarVigencia
+      ? somarDiasISO(hojeISO(), DIAS_VIGENCIA_RENOVACAO)
+      : contrato.data_termino_vigencia,
+  }));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   function atualizarCampo(chave: ChaveCampoEmissao, valor: string) {
     setCampos((atual) => ({ ...atual, [chave]: valor }));
+  }
+
+  function atualizarVigencia<K extends keyof typeof vigencia>(campo: K, valor: string) {
+    setVigencia((atual) => ({ ...atual, [campo]: valor }));
   }
 
   async function salvarEEmitir() {
@@ -170,11 +201,12 @@ function ModalCompletarDadosEmissao({
     setSalvando(true);
     setErro(null);
     try {
-      await apiFetch(`/contratos/${contrato.id}`, {
-        method: "PATCH",
-        token,
-        body: { numero_termo: campos.numero_termo },
-      });
+      const bodyContrato: Record<string, unknown> = { numero_termo: campos.numero_termo };
+      if (precisaRenovarVigencia) {
+        bodyContrato.data_inicio_vigencia = vigencia.data_inicio_vigencia;
+        bodyContrato.data_termino_vigencia = vigencia.data_termino_vigencia;
+      }
+      await apiFetch(`/contratos/${contrato.id}`, { method: "PATCH", token, body: bodyContrato });
       await apiFetch(`/empresas/${empresa.id}`, {
         method: "PATCH",
         token,
@@ -210,21 +242,46 @@ function ModalCompletarDadosEmissao({
         onClick={(evento) => evento.stopPropagation()}
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-brand border border-neutral-100 bg-neutral-100 p-6 shadow-lg shadow-black/40"
       >
-        <p className="text-center font-display text-lg font-semibold text-foreground">Completar dados para emitir o contrato</p>
-        <p className="mt-1 text-center text-sm text-neutral-800">
-          A minuta exige alguns dados que ainda não estão preenchidos. Complete abaixo e emita o contrato — os dados
-          da empresa ficam salvos para as próximas emissões.
+        <p className="text-center font-display text-lg font-semibold text-foreground">
+          {precisaRenovarVigencia ? "Contrato vencido — renovar vigência e emitir" : "Completar dados para emitir o contrato"}
         </p>
+        <p className="mt-1 text-center text-sm text-neutral-800">
+          {precisaRenovarVigencia
+            ? "Este contrato está vencido. Emitir um novo termo renova a vigência — confira/ajuste o novo período abaixo antes de emitir."
+            : "A minuta exige alguns dados que ainda não estão preenchidos. Complete abaixo e emita o contrato — os dados da empresa ficam salvos para as próximas emissões."}
+        </p>
+
+        {precisaRenovarVigencia && (
+          <div className="mt-4 grid gap-4 rounded-brand border border-warning/30 bg-warning/10 p-4 md:grid-cols-2">
+            <Field label="Nova data de início da vigência" htmlFor="renovacao-inicio">
+              <Input
+                id="renovacao-inicio"
+                type="date"
+                required
+                value={vigencia.data_inicio_vigencia}
+                onChange={(e) => atualizarVigencia("data_inicio_vigencia", e.target.value)}
+              />
+            </Field>
+            <Field label="Nova data de término da vigência" htmlFor="renovacao-fim">
+              <Input
+                id="renovacao-fim"
+                type="date"
+                required
+                value={vigencia.data_termino_vigencia}
+                onChange={(e) => atualizarVigencia("data_termino_vigencia", e.target.value)}
+              />
+            </Field>
+          </div>
+        )}
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {CAMPOS_EMISSAO.map((campo) => (
-            <Field key={campo.chave} label={campo.rotulo} htmlFor={`emissao-${campo.chave}`} className="text-center">
+            <Field key={campo.chave} label={campo.rotulo} htmlFor={`emissao-${campo.chave}`}>
               <Input
                 id={`emissao-${campo.chave}`}
                 required={!campo.opcional}
                 value={campos[campo.chave]}
                 onChange={(e) => atualizarCampo(campo.chave, e.target.value)}
-                className="border-black! bg-white! text-center text-black!"
               />
             </Field>
           ))}
@@ -246,11 +303,278 @@ function ModalCompletarDadosEmissao({
             Cancelar
           </button>
           <PrimaryButton type="button" onClick={salvarEEmitir} disabled={salvando}>
-            {salvando ? "Salvando…" : "Salvar e emitir"}
+            {salvando ? "Salvando…" : precisaRenovarVigencia ? "Renovar e emitir" : "Salvar e emitir"}
           </PrimaryButton>
         </div>
       </div>
     </div>
+  );
+}
+
+// Empresa que ainda não tem nenhum contrato cadastrado: em vez de exigir passar por
+// "Cadastrar contrato" (reservado agora pra quando já existe um contrato manual/físico pra
+// registrar), "Emitir contrato" cria o registro e já emite o PDF num passo só, com os mesmos
+// dados que ModalCompletarDadosEmissao pede pra um contrato existente + vigência/valor (que
+// aqui ainda não existem em lugar nenhum pra pré-preencher).
+function ModalEmitirContratoNovo({
+  empresa,
+  planos,
+  token,
+  onFechar,
+  onEmitido,
+}: {
+  empresa: Empresa;
+  planos: PlanoAfiliacao[];
+  token: string | null;
+  onFechar: () => void;
+  onEmitido: () => void;
+}) {
+  const [campos, setCampos] = useState<Record<ChaveCampoEmissao, string>>(() => {
+    const iniciais = {} as Record<ChaveCampoEmissao, string>;
+    for (const campo of CAMPOS_EMISSAO) {
+      iniciais[campo.chave] = valorAtualCampoEmissao(campo.chave, null, empresa);
+    }
+    return iniciais;
+  });
+  const [dadosContrato, setDadosContrato] = useState({
+    data_inicio_vigencia: "",
+    data_termino_vigencia: "",
+    plano_id: "",
+    valor_anuidade: "",
+    observacoes: "",
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  function atualizarCampo(chave: ChaveCampoEmissao, valor: string) {
+    setCampos((atual) => ({ ...atual, [chave]: valor }));
+  }
+
+  function atualizarDadosContrato<K extends keyof typeof dadosContrato>(campo: K, valor: string) {
+    setDadosContrato((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  async function criarEEmitir() {
+    setSalvando(true);
+    setErro(null);
+    try {
+      const bodyContrato: Record<string, unknown> = {
+        empresa_id: empresa.id,
+        data_inicio_vigencia: dadosContrato.data_inicio_vigencia,
+        data_termino_vigencia: dadosContrato.data_termino_vigencia,
+        numero_termo: campos.numero_termo,
+        observacoes: dadosContrato.observacoes || null,
+      };
+      if (dadosContrato.plano_id) bodyContrato.plano_id = Number(dadosContrato.plano_id);
+      if (dadosContrato.valor_anuidade) bodyContrato.valor_anuidade = Number(dadosContrato.valor_anuidade);
+
+      const novoContrato = await apiFetch<{ id: string }>("/contratos", { method: "POST", token, body: bodyContrato });
+
+      await apiFetch(`/empresas/${empresa.id}`, {
+        method: "PATCH",
+        token,
+        body: {
+          endereco_logradouro: campos.endereco_logradouro,
+          endereco_numero: campos.endereco_numero,
+          endereco_complemento: campos.endereco_complemento || null,
+          endereco_bairro: campos.endereco_bairro,
+          cidade: campos.cidade,
+          uf: campos.uf,
+          telefone: campos.telefone,
+          representante_legal: campos.representante_legal,
+          representante_legal_cpf: campos.representante_legal_cpf,
+          representante_legal_email: campos.representante_legal_email,
+          contatos: { ...empresa.contatos, email: campos.email_contato },
+        },
+      });
+
+      await apiFetch(`/contratos/${novoContrato.id}/emitir`, { method: "POST", token });
+      onEmitido();
+      onFechar();
+    } catch (error) {
+      setErro(error instanceof ApiError ? error.message : "Não foi possível criar e emitir o contrato.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onFechar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(evento) => evento.stopPropagation()}
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-brand border border-neutral-100 bg-neutral-100 p-6 shadow-lg shadow-black/40"
+      >
+        <p className="text-center font-display text-lg font-semibold text-foreground">
+          Emitir contrato — {empresa.nome_fantasia || empresa.razao_social}
+        </p>
+        <p className="mt-1 text-center text-sm text-neutral-800">
+          Esta empresa ainda não tem contrato. Preencha os dados abaixo pra criar o registro e emitir o PDF num só
+          passo — os dados da empresa ficam salvos para as próximas emissões.
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <Field label="Início da vigência" htmlFor="novo-inicio">
+            <Input
+              id="novo-inicio"
+              type="date"
+              required
+              value={dadosContrato.data_inicio_vigencia}
+              onChange={(e) => atualizarDadosContrato("data_inicio_vigencia", e.target.value)}
+            />
+          </Field>
+          <Field label="Término da vigência" htmlFor="novo-fim">
+            <Input
+              id="novo-fim"
+              type="date"
+              required
+              value={dadosContrato.data_termino_vigencia}
+              onChange={(e) => atualizarDadosContrato("data_termino_vigencia", e.target.value)}
+            />
+          </Field>
+          <Field label="Plano de afiliação (opcional)" htmlFor="novo-plano">
+            <Select
+              id="novo-plano"
+              value={dadosContrato.plano_id}
+              onChange={(e) => atualizarDadosContrato("plano_id", e.target.value)}
+            >
+              <option value="">Sem plano — informar valor manualmente</option>
+              {planos
+                .filter((plano) => plano.ativo)
+                .map((plano) => (
+                  <option key={plano.id} value={plano.id}>
+                    {plano.nome} — {formatarMoeda(plano.valor)}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+          <Field label="Valor da anuidade (se sem plano)" htmlFor="novo-valor">
+            <Input
+              id="novo-valor"
+              type="number"
+              step="0.01"
+              min="0"
+              value={dadosContrato.valor_anuidade}
+              onChange={(e) => atualizarDadosContrato("valor_anuidade", e.target.value)}
+            />
+          </Field>
+          {CAMPOS_EMISSAO.map((campo) => (
+            <Field key={campo.chave} label={campo.rotulo} htmlFor={`novo-${campo.chave}`}>
+              <Input
+                id={`novo-${campo.chave}`}
+                required={!campo.opcional}
+                value={campos[campo.chave]}
+                onChange={(e) => atualizarCampo(campo.chave, e.target.value)}
+              />
+            </Field>
+          ))}
+        </div>
+
+        <Field label="Observações (opcional)" htmlFor="novo-obs" className="mt-4">
+          <TextArea
+            id="novo-obs"
+            rows={3}
+            value={dadosContrato.observacoes}
+            onChange={(e) => atualizarDadosContrato("observacoes", e.target.value)}
+          />
+        </Field>
+
+        {erro && (
+          <div className="mt-4">
+            <ErrorText>{erro}</ErrorText>
+          </div>
+        )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onFechar}
+            disabled={salvando}
+            className="rounded-full border border-neutral-100 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-background disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <PrimaryButton type="button" onClick={criarEEmitir} disabled={salvando}>
+            {salvando ? "Emitindo…" : "Criar e emitir"}
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BotaoEmitirContratoNovo({
+  empresa,
+  planos,
+  token,
+  onSalvo,
+}: {
+  empresa: Empresa;
+  planos: PlanoAfiliacao[];
+  token: string | null;
+  onSalvo: () => void;
+}) {
+  const [modalAberto, setModalAberto] = useState(false);
+
+  return (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        onClick={() => setModalAberto(true)}
+        className="inline-flex items-center gap-1.5 rounded-full bg-[#F5DEA3] px-3 py-1.5 text-xs font-medium text-[#5c4400] transition-colors hover:bg-[#EFD284]"
+      >
+        <FaFileContract className="h-3.5 w-3.5" />
+        Emitir contrato
+      </button>
+      {modalAberto && (
+        <ModalEmitirContratoNovo
+          empresa={empresa}
+          planos={planos}
+          token={token}
+          onFechar={() => setModalAberto(false)}
+          onEmitido={onSalvo}
+        />
+      )}
+    </div>
+  );
+}
+
+// Linha de uma empresa que ainda não tem contrato — aparece na listagem (que agora cobre
+// todas as empresas, não só as que já têm contrato) com as colunas de dados vazias e a única
+// ação possível sendo emitir o primeiro contrato.
+function LinhaEmpresaSemContrato({
+  empresa,
+  planos,
+  token,
+  onSalvo,
+  mostrarEmpresa,
+  podeGerenciar,
+}: {
+  empresa: Empresa;
+  planos: PlanoAfiliacao[];
+  token: string | null;
+  onSalvo: () => void;
+  mostrarEmpresa: boolean;
+  podeGerenciar: boolean;
+}) {
+  return (
+    <tr className="border-b border-secondary-subtle-border last:border-0">
+      {mostrarEmpresa && (
+        <td className="px-4 py-3 font-medium text-foreground">{empresa.nome_fantasia || empresa.razao_social}</td>
+      )}
+      <td className="px-4 py-3 text-xs text-neutral-600">—</td>
+      <td className="px-4 py-3 text-xs text-neutral-600">—</td>
+      <td className="px-4 py-3">
+        <Badge variante="neutral">Sem contrato</Badge>
+      </td>
+      <td className="px-4 py-3 text-xs text-neutral-600">—</td>
+      <td className="px-4 py-3 text-right">
+        {podeGerenciar && (
+          <BotaoEmitirContratoNovo empresa={empresa} planos={planos} token={token} onSalvo={onSalvo} />
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -271,6 +595,13 @@ function BotaoEmitirContrato({
   const pedirConfirmacao = useConfirm();
 
   async function emitir() {
+    // Contrato vencido: emitir um novo termo renova a vigência, então sempre passa pelo modal
+    // (com aviso + campos de nova vigência) em vez do confirm simples — mesmo que os demais
+    // dados cadastrais já estejam completos.
+    if (contrato.estaVencido) {
+      setModalAberto(true);
+      return;
+    }
     const faltantes = camposFaltantesParaEmissao(contrato, empresa);
     if (faltantes.length > 0) {
       setModalAberto(true);
@@ -634,6 +965,43 @@ export default function ContratosPage() {
     return (id: string) => mapa.get(id);
   }, [empresas]);
 
+  // Uma empresa pode ter mais de um contrato (renovações encadeadas por contrato_anterior_id)
+  // — pra listagem por empresa, o "atual" é o de vigência mais recente.
+  const contratoAtualPorEmpresa = useMemo(() => {
+    const mapa = new Map<string, Contrato>();
+    for (const contrato of contratos ?? []) {
+      const atual = mapa.get(contrato.empresa_id);
+      if (!atual || contrato.data_inicio_vigencia > atual.data_inicio_vigencia) {
+        mapa.set(contrato.empresa_id, contrato);
+      }
+    }
+    return mapa;
+  }, [contratos]);
+
+  // RN: pra equipe_programa/contabilidade, a listagem cobre todas as empresas (não só as que
+  // já têm contrato) — "Cadastrar contrato" fica reservado pra quando já existe um contrato
+  // manual/físico a registrar; pra emitir o primeiro contrato de uma empresa, usa-se "Emitir
+  // contrato" na própria linha dela (cria e emite num passo só, ModalEmitirContratoNovo).
+  // empresa_afiliada só vê os próprios contratos (RN-33, já escopado no back), não faz
+  // sentido "todas as empresas" pra esse papel.
+  const linhas = useMemo(() => {
+    if (ehEmpresaAfiliada) {
+      return (contratos ?? []).map((contrato) => ({
+        tipo: "com_contrato" as const,
+        contrato,
+        empresa: empresaPorId(contrato.empresa_id),
+      }));
+    }
+    return (empresas ?? []).map((empresa) => {
+      const contrato = contratoAtualPorEmpresa.get(empresa.id);
+      return contrato
+        ? { tipo: "com_contrato" as const, contrato, empresa }
+        : { tipo: "sem_contrato" as const, empresa };
+    });
+  }, [ehEmpresaAfiliada, contratos, empresas, contratoAtualPorEmpresa, empresaPorId]);
+
+  const carregando = ehEmpresaAfiliada ? !contratos && !erro : !empresas && !erro;
+
   function atualizarCampo<K extends keyof typeof CAMPOS_INICIAIS>(campo: K, valor: string) {
     setCampos((atual) => ({ ...atual, [campo]: valor }));
   }
@@ -684,11 +1052,15 @@ export default function ContratosPage() {
     <div>
       <PageHeader
         title="Contratos"
-        subtitle="Listagem de contratos para enviar às empresas afiliadas"
+        subtitle={
+          ehEmpresaAfiliada
+            ? "Listagem de contratos de afiliação e gestão de vigência"
+            : "Todas as empresas — use \"Emitir contrato\" na linha da empresa para gerar o primeiro contrato dela"
+        }
         action={
           podeGerenciar ? (
             <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
-              {formAberto ? "Cancelar" : "Cadastrar contrato"}
+              {formAberto ? "Cancelar" : "Cadastrar contrato manual"}
             </SecondaryButton>
           ) : undefined
         }
@@ -696,6 +1068,11 @@ export default function ContratosPage() {
 
       {podeGerenciar && formAberto && (
         <form onSubmit={handleSubmit} className="mb-6 rounded-brand border border-neutral-100 p-5">
+          <p className="mb-4 text-sm text-neutral-800">
+            Use isto só quando a empresa já tem um contrato manual/físico pra registrar (com vigência definida e,
+            opcionalmente, o arquivo assinado). Pra emitir o primeiro contrato de uma empresa a partir da minuta
+            padrão, use o botão Emitir contrato na linha dela.
+          </p>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Empresa" htmlFor="empresa_id">
               <Select
@@ -786,38 +1163,52 @@ export default function ContratosPage() {
       )}
 
       {erro && <ErrorText>{erro}</ErrorText>}
-      {!contratos && !erro && <p className="text-sm text-neutral-600">Carregando…</p>}
-      {contratos && contratos.length === 0 && (
-        <p className="text-sm text-neutral-600">Nenhum contrato cadastrado ainda.</p>
+      {carregando && <p className="text-sm text-neutral-600">Carregando…</p>}
+      {!carregando && linhas.length === 0 && (
+        <p className="text-sm text-neutral-600">
+          {ehEmpresaAfiliada ? "Nenhum contrato cadastrado ainda." : "Nenhuma empresa cadastrada ainda."}
+        </p>
       )}
 
-      {contratos && contratos.length > 0 && (
+      {!carregando && linhas.length > 0 && (
         <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
-                <th className="px-4 py-3 font-bold">Vigência</th>
-                <th className="px-4 py-3 font-bold">Anuidade</th>
-                <th className="px-4 py-3 font-bold">Situação</th>
-                <th className="px-4 py-3 font-bold">Arquivo</th>
-                <th className="px-4 py-3 font-bold" />
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 text-left font-bold">Empresa</th>}
+                <th className="px-4 py-3 text-left font-bold">Vigência</th>
+                <th className="px-4 py-3 text-left font-bold">Anuidade</th>
+                <th className="px-4 py-3 text-left font-bold">Situação</th>
+                <th className="px-4 py-3 text-left font-bold">Arquivo</th>
+                <th className="px-4 py-3 text-left font-bold" />
               </tr>
             </thead>
             <tbody>
-              {contratos.map((contrato) => (
-                <LinhaContrato
-                  key={contrato.id}
-                  contrato={contrato}
-                  nomeEmpresa={nomeEmpresa}
-                  empresa={empresaPorId(contrato.empresa_id)}
-                  token={token}
-                  onSalvo={recarregar}
-                  mostrarEmpresa={!ehEmpresaAfiliada}
-                  podeGerenciar={podeGerenciar}
-                  podeMarcarVigente={podeMarcarVigente}
-                />
-              ))}
+              {linhas.map((linha) =>
+                linha.tipo === "com_contrato" ? (
+                  <LinhaContrato
+                    key={linha.contrato.id}
+                    contrato={linha.contrato}
+                    nomeEmpresa={nomeEmpresa}
+                    empresa={linha.empresa}
+                    token={token}
+                    onSalvo={recarregar}
+                    mostrarEmpresa={!ehEmpresaAfiliada}
+                    podeGerenciar={podeGerenciar}
+                    podeMarcarVigente={podeMarcarVigente}
+                  />
+                ) : (
+                  <LinhaEmpresaSemContrato
+                    key={linha.empresa.id}
+                    empresa={linha.empresa}
+                    planos={planos ?? []}
+                    token={token}
+                    onSalvo={recarregar}
+                    mostrarEmpresa={!ehEmpresaAfiliada}
+                    podeGerenciar={podeGerenciar}
+                  />
+                )
+              )}
             </tbody>
           </table>
         </div>
