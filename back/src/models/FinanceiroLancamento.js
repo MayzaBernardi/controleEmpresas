@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true,
       },
+      tipo_lancamento: {
+        type: DataTypes.ENUM('nota_fiscal', 'boleto'),
+        allowNull: false,
+        defaultValue: 'boleto',
+      },
       numero_documento: {
         type: DataTypes.STRING(100),
         allowNull: true,

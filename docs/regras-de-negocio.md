@@ -15,9 +15,9 @@ explicitamente.
 
 | Ator                     | O que pode fazer                                                                                                 |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Equipe do programa       | Cadastra e gerencia empresas afiliadas, gera contratos, dispara comunicação, acompanha o processo ponta a ponta. |
+| Equipe do programa       | Cadastra e gerencia empresas afiliadas, gera/emite contratos (RN-46), dispara comunicação, acompanha o processo ponta a ponta. |
 | Empresa afiliada         | Consulta seus próprios débitos e status; envia documentos exigidos. Não vê dados de outras empresas.             |
-| Contabilidade/Financeiro | Lança NF e boleto, confirma pagamentos. Só mexe na parte financeira — não edita cadastro nem contrato.           |
+| Contabilidade/Financeiro | Lança NF e boleto, confirma pagamentos. Também visualiza/baixa os documentos gerais das empresas (RN-45) e os contratos já emitidos, para enviar à assinatura externa (RN-46) — mas não cadastra/edita documento nem contrato, nem mexe em outros dados de cadastro. |
 
 - **RN-01** — Todo acesso ao sistema é segmentado por ator (RF-08): cada perfil só enxerga e edita o que é da sua responsabilidade. Uma empresa afiliada nunca vê dados de outra empresa.
 - **RN-02** — ~~O login é institucional (SSO), sem senha própria do sistema (RNF-01).~~ **Revisado em 2026-09-17**: SSO institucional foi validado com o time como inviável. O login é local (e-mail + senha própria do sistema, hash bcrypt). Não há autocadastro nem "esqueci minha senha" por e-mail: a equipe do programa cria cada usuário e define/reseta a senha manualmente pela tela de Usuários (ver [ADR 0003 §3](./decisoes/0003-persistencia-e-autenticacao.md)).
@@ -27,15 +27,16 @@ explicitamente.
 - **RN-03** — O contato inicial de uma empresa interessada normalmente acontece por WhatsApp (envio de material/edital), mas isso **não é registrado no sistema** — o WhatsApp não é integrável e fica fora do fluxo digital.
 - **RN-04** — O processo de afiliação só é considerado formalmente iniciado quando a empresa preenche o formulário de cadastro próprio do sistema, que grava direto no banco (RF-01), substituindo o formulário externo + planilha atual.
 - **RN-05** — Uma empresa cadastrada deve poder ser listada e consultada pela equipe do programa a qualquer momento (RF-02).
-- ⚠️ **RN-06** — Uma empresa pode existir no sistema em estados como: _cadastro iniciado_, _aguardando contrato/assinatura_, _ativa_, _inadimplente_, _em renovação_, _encerrada_. (Os nomes e transições exatas dos estados ainda não foram confirmados com o negócio — usar como rascunho até validar.)
+- **RN-06** — **Resolvida em 2026-09-17**: `empresas.status_processo` tem exatamente 3 valores: `contrato_elaboracao`, `ativa` e `encerrada`. Transições: toda empresa nasce em `contrato_elaboracao` — seja criada manualmente pela equipe, seja pela ação "Criar nova empresa" a partir de um `FormularioResposta` recebido (ver RN-04-A abaixo); passa para `ativa` automaticamente quando um contrato dela é **emitido** (`contratosService.emitir`, RN-46) — efeito colateral da emissão, sem endpoint próprio para setar isso manualmente; `encerrada` **nunca é gravado na coluna** — é calculado em leitura por `empresasService` (mesmo espírito de RN-30, mas cruzando com `Contrato` no service em vez de getter de model): uma empresa persistida como `ativa` aparece como `encerrada` na resposta da API quando nenhum contrato dela (ativo, não soft-deletado) está `em_assinatura` ou `vigente` dentro da vigência — ou seja, contrato vencido sem renovação. A ação de "Renovar" um contrato (RN-42) continua disponível normalmente mesmo com a empresa mostrando `encerrada` — não há bloqueio cruzado entre os dois.
+- **RN-04-A** — **Adicionada em 2026-09-17**: um `FormularioResposta` não vira `Empresa` automaticamente — a equipe usa a ação explícita "Criar nova empresa" (`POST /formulario-respostas/:id/criar-empresa`, só `equipe_programa`), que abre um pop-up com os dados da submissão (`payload_respostas`) pré-preenchidos e editáveis, cria o cadastro de Empresa (reaproveitando toda validação de `empresasService.criar`, incluindo RN-32) e vincula `formulario_resposta.empresa_id` de volta — coluna que existia no schema desde a Etapa 4 mas nunca era preenchida por nenhum código antes desta regra. Chamar essa ação de novo no mesmo formulário depois de já vinculado é recusado com `400`.
 
 ## 3. Contrato e assinatura
 
-- **RN-07** — O contrato é gerado automaticamente a partir de uma minuta padrão (modelo com campos variáveis, hoje preenchidos manualmente a partir de um PDF), usando os dados cadastrais da empresa (RF-03).
-- **RN-08** — Após gerado, o contrato segue para abertura de chamado na Procuradoria Jurídica. **Esse fluxo é externo ao sistema e não muda** — o sistema não controla nem acelera esse processo (RF-10).
-- **RN-09** — Um contrato só é considerado vigente depois de assinado por: o representante legal da empresa **+** 3 assinantes institucionais **+** o reitor.
-- **RN-10** — O sistema registra o retorno desse fluxo de assinatura (eventos "documento inserido" / "documento concluído", hoje recebidos por e-mail), mas não participa do processo de coleta de assinaturas em si (RF-10).
-- ⚠️ **RN-11** — Enquanto o contrato não estiver com todas as assinaturas concluídas, a empresa não deve ser tratada como afiliada ativa para fins de cobrança/vigência. (Ponto a confirmar: existe algum caso em que a cobrança começa antes da assinatura completa?)
+- **RN-07** — O contrato é gerado automaticamente a partir de uma minuta padrão (modelo com campos variáveis), usando os dados cadastrais da empresa (RF-03). **Atualizada em 2026-09-17 (ADR 0008)**: a geração do PDF em si passou a ser automática (`POST /contratos/:id/emitir`, `contratosService.emitir`, só `equipe_programa`) — antes era preenchida manualmente pela equipe fora do sistema.
+- ~~**RN-08** — Após gerado, o contrato segue para abertura de chamado na Procuradoria Jurídica. Esse fluxo é externo ao sistema e não muda — o sistema não controla nem acelera esse processo (RF-10).~~ **Aposentada em 2026-09-17 (ADR 0008)**: o mapeamento estava errado — não existe chamado de Procuradoria no fluxo real. Depois de emitido, o contrato vai direto para assinatura eletrônica externa (RN-46). Os campos `numero_chamado_procuradoria`/`data_envio_procuradoria`/`data_retorno_procuradoria` continuam em `contratos` (histórico de contratos antigos), mas não são mais exigidos nem preenchidos pelo fluxo ativo.
+- ~~**RN-09** — Um contrato só é considerado vigente depois de assinado por: o representante legal da empresa + 3 assinantes institucionais + o reitor.~~ **Aposentada em 2026-09-17 (ADR 0008)**: a assinatura não é mais rastreada pessoa a pessoa dentro do sistema — acontece inteiramente no serviço de assinatura eletrônica externo (Satelitti, RN-46). A tabela/model `Assinatura` continua no schema (histórico), mas não é mais alimentada pelo fluxo ativo. Um contrato passa a "vigente" quando a equipe confirma manualmente que ele voltou assinado (RN-46).
+- ~~**RN-10** — O sistema registra o retorno desse fluxo de assinatura (eventos "documento inserido"/"documento concluído", hoje recebidos por e-mail), mas não participa do processo de coleta de assinaturas em si (RF-10).~~ **Aposentada em 2026-09-17 (ADR 0008)**: não há mais eventos de assinatura a registrar — ver RN-46.
+- ~~⚠️ **RN-11** — Enquanto o contrato não estiver com todas as assinaturas concluídas, a empresa não deve ser tratada como afiliada ativa para fins de cobrança/vigência.~~ **Aposentada em 2026-09-17 (ADR 0008)**: não existe mais "todas as assinaturas concluídas" como estado rastreado no sistema — o critério passou a ser simplesmente `status_contrato_id = vigente`, setado manualmente pela equipe (RN-46) quando o contrato volta assinado do serviço externo.
 
 ## 4. Casos especiais de contratação
 
@@ -46,6 +47,7 @@ explicitamente.
 
 - **RN-14** — Documentos exigidos pelo edital de afiliação devem ser enviados pela empresa e armazenados no sistema, vinculados a ela (RF-05), substituindo a troca por e-mail com a caixa NIT01.
 - **RN-15** — A empresa deve conseguir ver quais documentos já enviou e (presumivelmente) quais ainda faltam. ⚠️ A lista de documentos obrigatórios por tipo de edital/caso ainda não foi formalizada num checklist — hoje está implícita no edital em PDF.
+- **RN-45** — **Adicionada em 2026-09-17**: a Contabilidade tem acesso de **leitura** aos documentos gerais das empresas (`GET /documentos`, sem isolamento por empresa — mesmo comportamento de listagem que a equipe do programa) para visualizar e baixar/abrir arquivos já enviados, mas não pode cadastrar (`POST /documentos`), editar, aprovar/rejeitar nem excluir (`PATCH /documentos/:id`) — essas ações continuam restritas a `equipe_programa` (e, no caso do cadastro, também `empresa_afiliada` para os próprios documentos). Reforça RN-01 ("cada perfil só enxerga e edita o que é da sua responsabilidade"): a Contabilidade ganha visibilidade a mais sem ganhar permissão de escrita nesse módulo.
 
 ## 6. Financeiro
 
@@ -54,6 +56,7 @@ explicitamente.
 - **RN-18** — A cobrança de atraso depende de cruzar dados do sistema com a contabilidade — hoje isso é manual. A adesão da contabilidade ao sistema é condição de sucesso do projeto (RNF-05): sem a contabilidade lançando os dados nele, o controle financeiro fica incompleto.
 - **RN-19** — A empresa afiliada deve poder consultar seus próprios débitos e status de pagamento a qualquer momento (RF-09), sem precisar pedir por e-mail/WhatsApp.
 - ⚠️ **RN-20** — Formas de pagamento além de boleto único (PIX, parcelamento) estão em cogitação, mas **não confirmadas**. Não implementar até decisão do negócio — aumentam a complexidade do financeiro (conciliação, parcelas em aberto, etc.).
+- **RN-44** — **Adicionada em 2026-09-17**: todo lançamento financeiro tem um `tipo_lancamento` explícito, escolhido pela Contabilidade no cadastro: **Nota Fiscal** ou **Boleto**. Ao cadastrar um lançamento do tipo **Nota Fiscal**, o pagamento já é considerado efetivado no ato do cadastro — não existe passo manual de "confirmar pagamento" para esse tipo, porque na prática a nota só chega para cadastro depois de já ter sido paga: `financeiroService.lancar` (`back/src/services/financeiroService.js`) grava automaticamente `data_pagamento` = data do cadastro (hoje) e `status_financeiro_id` = "pago", ignorando qualquer valor de `data_pagamento`/`status_financeiro_id` enviado no corpo da requisição. Um lançamento do tipo **Boleto** mantém o fluxo original (RN-16/RF-06): nasce com `status_financeiro_id` = "pendente" (ou o que vier no body) e `data_pagamento` nula, até confirmação manual via `PATCH /financeiro-lancamentos/:id/pagamento` (`financeiroService.confirmarPagamento`). Não dá para inferir o tipo pelos campos `numero_documento`/`numero_nota_fiscal` — são independentes, opcionais e podem coexistir no mesmo registro (por isso o campo `tipo_lancamento` existe separadamente); lançamentos anteriores a esta regra (seed) foram classificados como `boleto` pela migration (`20260917010000-add-tipo-lancamento-financeiro-lancamentos.js`), preservando seu comportamento original — nenhum lançamento pré-existente virou "pago" retroativamente.
 
 ## 7. Vigência e renovação
 
@@ -109,9 +112,9 @@ explicitamente.
 
 - **RN-38** — Contratos e Documentos podem ter um arquivo (PNG ou PDF) anexado diretamente no cadastro/edição, armazenado em base64 no próprio PostgreSQL (colunas `arquivo_nome`/`arquivo_mimetype`/`arquivo_base64`) — sem storage externo (ADR 0007 §2). Em Documentos, isso é alternativo à URL externa (`url_arquivo`, agora opcional): o registro precisa ter pelo menos um dos dois, nunca é obrigatório ter os dois.
 
-- **RN-39** — `status_prospeccao` tem 3 valores possíveis: `em_contato` (Em contato), `nao_constatada` (Não constatada) e `proposta_rejeitada` (Proposta rejeitada). Não existe um status "convertida" — ver RN-36 atualizada.
+- **RN-39** — `status_prospeccao` tem 3 valores possíveis: `em_contato` (Em contato), `nao_constatada` (Não constatada) e `proposta_rejeitada` (Proposta rejeitada). Não existe um status "convertida" — ver RN-36 atualizada. **Atualizada em 2026-09-17**: toda prospecção nasce com status `nao_constatada` (`prospeccaoService.criar`, sem exigir isso no body) — a equipe ainda não confirmou contato com a empresa nesse momento. Só depois de a equipe efetivamente entrar em contato é que alguém muda manualmente para `em_contato` (seguiu adiante) ou `proposta_rejeitada` (recusou). Antes desta atualização, o padrão era `em_contato`, o que não fazia sentido pra uma prospecção recém-criada e ainda sem contato confirmado.
 
-- **RN-40** — `formulario_respostas.status_triagem` tem 2 valores possíveis: `aguardando` (Aguardando preenchimento) e `finalizado` (Finalizado). Quando a empresa vinculada a um formulário já tem contrato ativo (vigente, não vencido), o formulário sai da listagem de triagem da equipe do programa — a empresa passa a aparecer normalmente na listagem de Empresas.
+- **RN-40** — `formulario_respostas.status_triagem` tem 2 valores possíveis: `aguardando` (Aguardando preenchimento) e `finalizado` (Finalizado). Um formulário sai da listagem de triagem da equipe do programa assim que `empresa_id` é preenchido (RN-04-A — "Criar nova empresa", independente de já ter contrato ou não: a empresa passa a viver só na listagem de Empresas a partir daí) **ou**, mesmo sem cadastro ainda, quando o CNPJ do próprio `payload_respostas` já corresponde a uma empresa (outra) com contrato ativo (vigente, não vencido) — caso de um formulário respondido antes de virar cadastro. **Atualizada em 2026-09-17**: antes desta correção, um formulário só saía da listagem pelo critério de CNPJ+contrato — mesmo já convertido em Empresa (RN-04-A), continuava aparecendo em Triagem até ganhar contrato, o que não fazia sentido (a empresa já existe formalmente, não deveria continuar entre as "submissões brutas").
 
 - ⚠️ **RN-41** — O formulário de inscrição (RF-01) tem uma versão pública, sem autenticação, acessível por link direto, com uma aba mostrando os benefícios de ser afiliado. **Pendência**: o conteúdo da aba de benefícios ainda é genérico/provisório — aguardando o material oficial da equipe do programa para substituir.
 
@@ -119,17 +122,20 @@ explicitamente.
 
 - **RN-43** — A sugestão de corpo de e-mail a partir do assunto, na criação de rascunho em Comunicações, é gerada por um conjunto de templates locais por palavra-chave — não por um modelo de IA real (a integração com um provedor de LLM, prevista na RN-28/ADR 0002, ainda não tem uma chave de API configurada). O rascunho continua marcado `gerado_por_ia: true` e passa pela mesma revisão humana obrigatória antes de aprovar/enviar (RN-28 não muda).
 
+## 13. Emissão de contrato e assinatura externa (ADR 0008, 2026-09-17)
+
+- **RN-46** — O fluxo real de contrato é: (1) a `equipe_programa` **emite** o contrato (`POST /contratos/:id/emitir`) — o sistema gera automaticamente um PDF a partir da minuta padrão (`back/public/templates/minuta-contrato-afiliacao.docx`), preenchido com os dados do contrato e da empresa, e o contrato passa para o status `em_assinatura`; (2) a `contabilidade` baixa esse PDF (já tinha acesso de leitura a Contratos, RN-33 — nenhuma permissão nova precisou ser criada) e o envia para assinatura pelo serviço eletrônico externo **Satelitti** (citado por nome na própria minuta, cláusula de assinatura eletrônica) — esse envio e a coleta de assinaturas acontecem inteiramente **fora do sistema**; (3) quando o contrato retorna assinado, a `equipe_programa` **ou** a `contabilidade` confirma manualmente (`PATCH /contratos/:id/vigente`, `contratosService.marcarVigente`), avançando o status para `vigente`. **Atualizada em 2026-09-17**: `contabilidade` ganhou acesso a essa confirmação — é quem manda o contrato para o Satelitti e assina em nome do Pollen, então é quem sabe quando a assinatura foi finalizada (a ação de emitir continua exclusiva de `equipe_programa`). Isso substitui o mapeamento antigo de Procuradoria/assinatura individual (RN-08/RN-09/RN-10/RN-11, aposentadas — ver ADR 0008). O upload manual de arquivo (RN-38) continua disponível como alternativa/correção à emissão automática.
+- **RN-47** — Para emitir um contrato, a empresa vinculada precisa ter preenchido: endereço completo (`endereco_logradouro`, `endereco_numero`, `endereco_bairro` — `endereco_complemento` é opcional), `cidade`, `uf`, `telefone`, `representante_legal`, `representante_legal_cpf`, `representante_legal_email` e um e-mail de contato (`contatos.email`); e o contrato precisa ter `numero_termo` preenchido. Esses campos são **opcionais no cadastro da empresa** (não bloqueiam criar/editar uma empresa) — só a ação de emitir contrato exige e recusa (`400`) com uma mensagem listando exatamente o que falta, caso algum esteja ausente.
+
 ## Pendências abertas (não implementar até confirmar)
 
 Lista de tudo marcado com ⚠️ acima, para facilitar o acompanhamento:
 
-1. Nomes/transições exatas do status de uma empresa (RN-06).
-2. Se cobrança pode começar antes da assinatura completa do contrato (RN-11).
-3. Regras específicas para grande porte em alteração contratual (RN-12).
-4. Regras específicas para empresa internacional (RN-13).
-5. Checklist formal de documentos obrigatórios por edital (RN-15).
-6. PIX e parcelamento — decisão de escopo (RN-20).
-7. Renovação automática vs. manual (RN-22).
-8. Antecedência do aviso de vencimento de vigência (RN-23).
-9. Caixa de e-mail institucional a ser usada pelo sistema (RN-26).
-10. Conteúdo real da aba de benefícios de afiliação no formulário público (RN-41) — hoje é texto genérico/provisório.
+1. Regras específicas para grande porte em alteração contratual (RN-12).
+2. Regras específicas para empresa internacional (RN-13).
+3. Checklist formal de documentos obrigatórios por edital (RN-15).
+4. PIX e parcelamento — decisão de escopo (RN-20).
+5. Renovação automática vs. manual (RN-22).
+6. Antecedência do aviso de vencimento de vigência (RN-23).
+7. Caixa de e-mail institucional a ser usada pelo sistema (RN-26).
+8. Conteúdo real da aba de benefícios de afiliação no formulário público (RN-41) — hoje é texto genérico/provisório.

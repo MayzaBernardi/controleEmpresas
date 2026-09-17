@@ -20,11 +20,15 @@
     "@google/genai": "^2.22.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
+    "docxtemplater": "^3.42.2",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "extenso": "^2.1.0",
     "jsonwebtoken": "^9.0.3",
+    "libreoffice-convert": "^1.8.2",
     "pg": "^8.13.3",
     "pg-hstore": "^2.3.4",
+    "pizzip": "^3.1.4",
     "sequelize": "^6.37.7"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 'use strict';
 
 const { Router } = require('express');
-const { submeter, listar, detalhar, triar } = require('../controllers/formularioController');
+const { submeter, listar, detalhar, triar, criarEmpresa } = require('../controllers/formularioController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const requireRole = require('../middlewares/requireRole');
 
@@ -16,5 +16,7 @@ router.get('/', authMiddleware, requireRole('equipe_programa'), listar);
 router.get('/:id', authMiddleware, requireRole('equipe_programa'), detalhar);
 
 router.patch('/:id/triagem', authMiddleware, requireRole('equipe_programa'), triar);
+
+router.post('/:id/criar-empresa', authMiddleware, requireRole('equipe_programa'), criarEmpresa);
 
 module.exports = router;

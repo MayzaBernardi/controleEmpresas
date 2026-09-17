@@ -106,21 +106,19 @@ async function listar({ models } = {}) {
   const db = models || require('../models');
 
   const [formularios, cnpjsValidos] = await Promise.all([
-    db.FormularioResposta.findAll({
-      include: [{ model: db.Empresa, as: 'empresa', attributes: ['cnpj'] }],
-      order: [['createdAt', 'DESC']],
-    }),
+    db.FormularioResposta.findAll({ order: [['createdAt', 'DESC']] }),
     cnpjsComContratoValido(db),
   ]);
 
-  if (cnpjsValidos.size === 0) return formularios;
-
-  // RN-42: prioriza o CNPJ da Empresa já vinculada; sem vínculo ainda, usa o CNPJ
-  // informado no próprio payload (formulário respondido antes de virar cadastro).
+  // RN-04-A: uma vez convertido em cadastro de Empresa (empresa_id preenchido via
+  // "Criar nova empresa"), o formulário sai da listagem de triagem incondicionalmente —
+  // passa a viver só na tela de Empresas, independente de já ter contrato ou não.
+  // RN-42: sem cadastro ainda, some também se o CNPJ do próprio payload já corresponder a
+  // uma empresa (outra) com contrato válido — formulário respondido antes de virar cadastro.
   return formularios.filter((formulario) => {
-    const cnpjVinculado = somenteDigitos(formulario.empresa?.cnpj);
-    const cnpjPayload = somenteDigitos(formulario.payload_respostas?.cnpj);
-    const cnpj = cnpjVinculado || cnpjPayload;
+    if (formulario.empresa_id) return false;
+    if (cnpjsValidos.size === 0) return true;
+    const cnpj = somenteDigitos(formulario.payload_respostas?.cnpj);
     return !cnpj || !cnpjsValidos.has(cnpj);
   });
 }
@@ -156,4 +154,53 @@ async function triar(id, body, { usuario, models } = {}) {
   return resultado;
 }
 
-module.exports = { registrarSubmissao, listar, buscarPorId, triar };
+/**
+ * Ação explícita da equipe_programa: cria o cadastro de Empresa a partir de um
+ * FormularioResposta recebido e vincula empresa_id de volta (a coluna existe no schema
+ * desde sempre, mas nada a preenchia automaticamente). Reaproveita empresasService.criar
+ * (RN-32 de CNPJ/identificador_estrangeiro e auditoria de criação da empresa já ficam por
+ * conta dele) — aqui só fixamos status_processo em 'contrato_elaboracao' (toda empresa
+ * nasce nesse status, RN-06) e contatos.email vindo do email_contato do formulário, e
+ * registramos a auditoria separada do vínculo empresa_id no próprio formulário.
+ */
+async function criarEmpresa(id, body, { usuario, models } = {}) {
+  const db = models || require('../models');
+  const empresasService = require('./empresasService'); // require tardio: evita ciclo se empresasService vier a importar este arquivo
+  const formularioResposta = await buscarPorId(id, { models: db });
+
+  if (formularioResposta.empresa_id) {
+    throw new ApiError(400, 'Este formulário já está vinculado a uma empresa.');
+  }
+
+  const dadosEmpresa = {
+    razao_social: body?.razao_social,
+    nome_fantasia: body?.nome_fantasia ?? null,
+    tipo_empresa: body?.tipo_empresa || 'nacional',
+    cnpj: body?.cnpj ?? null,
+    identificador_estrangeiro: body?.identificador_estrangeiro ?? null,
+    telefone: body?.telefone ?? null,
+    cidade: body?.cidade ?? null,
+    uf: body?.uf ?? null,
+    contatos: { email: formularioResposta.email_contato },
+    status_processo: 'contrato_elaboracao',
+  };
+
+  const empresa = await empresasService.criar(dadosEmpresa, { usuario, models: db });
+
+  const dadosAnteriores = { empresa_id: formularioResposta.empresa_id };
+  formularioResposta.empresa_id = empresa.id;
+  await wrapSequelizeErrors(formularioResposta.save());
+  await auditoriaService.registrar({
+    entidade: 'formulario_respostas',
+    entidadeId: formularioResposta.id,
+    acao: 'update',
+    usuario,
+    dadosAnteriores,
+    dadosNovos: { empresa_id: empresa.id },
+    models: db,
+  });
+
+  return empresa;
+}
+
+module.exports = { registrarSubmissao, listar, buscarPorId, triar, criarEmpresa };
