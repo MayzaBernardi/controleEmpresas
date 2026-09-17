@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineRefresh } from "react-icons/hi";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea } from "@/components/form";
+import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextArea, UploadButton } from "@/components/form";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
@@ -71,14 +72,9 @@ function UploadArquivo({
   onSelecionar: (file: File) => void;
   erro: string | null;
 }) {
-  async function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) onSelecionar(file);
-  }
-
   return (
     <div>
-      <input type="file" accept=".png,image/png,.pdf,application/pdf" onChange={handleChange} className="text-sm" />
+      <UploadButton onSelecionar={onSelecionar} accept=".png,image/png,.pdf,application/pdf" />
       {arquivoNome && <p className="mt-1 text-xs text-secondary-foreground">Selecionado: {arquivoNome}</p>}
       {erro && <p className="mt-1 text-xs text-danger">{erro}</p>}
     </div>
@@ -97,6 +93,7 @@ function LinhaContrato({
   onSalvo: () => void;
 }) {
   const router = useRouter();
+  const pedirConfirmacao = useConfirm();
   const [editando, setEditando] = useState(false);
   const [campos, setCampos] = useState({
     numero_termo: contrato.numero_termo ?? "",
@@ -146,7 +143,14 @@ function LinhaContrato({
   }
 
   async function excluir() {
-    if (!window.confirm(`Excluir este contrato de "${nomeEmpresa(contrato.empresa_id)}"?`)) return;
+    if (
+      !(await pedirConfirmacao({
+        mensagem: `Excluir este contrato de "${nomeEmpresa(contrato.empresa_id)}"?`,
+        tone: "danger",
+        confirmarLabel: "Excluir",
+      }))
+    )
+      return;
     setSalvando(true);
     try {
       await apiFetch(`/contratos/${contrato.id}`, { method: "PATCH", token, body: { ativo: false } });

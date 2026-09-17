@@ -2,10 +2,12 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { Badge } from "@/components/Badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton } from "@/components/form";
+import { ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, UploadButton } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { abrirArquivoBase64, lerArquivoComoBase64 } from "@/lib/arquivo";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { useApiResource } from "@/lib/useApiResource";
 
@@ -19,6 +21,8 @@ interface FinanceiroLancamento {
   data_vencimento: string;
   data_pagamento: string | null;
   estaAtrasado: boolean;
+  comprovante_mimetype: string | null;
+  comprovante_base64: string | null;
 }
 
 interface Empresa {
@@ -36,6 +40,24 @@ const CAMPOS_INICIAIS = {
   numero_nota_fiscal: "",
 };
 
+function UploadArquivo({
+  arquivoNome,
+  onSelecionar,
+  erro,
+}: {
+  arquivoNome: string | null;
+  onSelecionar: (file: File) => void;
+  erro: string | null;
+}) {
+  return (
+    <div>
+      <UploadButton onSelecionar={onSelecionar} accept=".png,image/png,.jpg,.jpeg,image/jpeg,.pdf,application/pdf" />
+      {arquivoNome && <p className="mt-1 text-xs text-secondary-foreground">Selecionado: {arquivoNome}</p>}
+      {erro && <p className="mt-1 text-xs text-danger">{erro}</p>}
+    </div>
+  );
+}
+
 function BotaoConfirmarPagamento({
   lancamento,
   token,
@@ -47,9 +69,17 @@ function BotaoConfirmarPagamento({
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const pedirConfirmacao = useConfirm();
 
   async function confirmar() {
-    if (!window.confirm("Confirmar o pagamento deste lançamento com a data de hoje?")) return;
+    if (
+      !(await pedirConfirmacao({
+        mensagem: "Confirmar o pagamento deste lançamento com a data de hoje?",
+        tone: "default",
+        confirmarLabel: "Confirmar pagamento",
+      }))
+    )
+      return;
     setConfirmando(true);
     setErro(null);
     try {
@@ -85,6 +115,8 @@ export default function FinanceiroPage() {
 
   const [formAberto, setFormAberto] = useState(false);
   const [campos, setCampos] = useState(CAMPOS_INICIAIS);
+  const [arquivo, setArquivo] = useState<{ nome: string; mimetype: string; base64: string } | null>(null);
+  const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
 
@@ -98,6 +130,16 @@ export default function FinanceiroPage() {
 
   function atualizarCampo<K extends keyof typeof campos>(campo: K, valor: string) {
     setCampos((atual) => ({ ...atual, [campo]: valor }));
+  }
+
+  async function selecionarArquivo(file: File) {
+    setErroArquivo(null);
+    try {
+      const lido = await lerArquivoComoBase64(file);
+      setArquivo(lido);
+    } catch (error) {
+      setErroArquivo(error instanceof Error ? error.message : "Não foi possível ler o arquivo.");
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -115,9 +157,12 @@ export default function FinanceiroPage() {
           forma_pagamento: campos.forma_pagamento,
           numero_documento: campos.numero_documento || null,
           numero_nota_fiscal: campos.numero_nota_fiscal || null,
+          comprovante_mimetype: arquivo?.mimetype,
+          comprovante_base64: arquivo?.base64,
         },
       });
       setCampos(CAMPOS_INICIAIS);
+      setArquivo(null);
       setFormAberto(false);
       recarregar();
     } catch (error) {
@@ -139,7 +184,7 @@ export default function FinanceiroPage() {
         action={
           <div className="flex items-center gap-2">
             {podeLancar && (
-              <PrimaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
+              <PrimaryButton type="button" onClick={() => setFormAberto((v) => !v)} className="text-white!">
                 {formAberto ? "Cancelar" : "Cadastrar boleto / nota"}
               </PrimaryButton>
             )}
@@ -219,6 +264,11 @@ export default function FinanceiroPage() {
             />
           </Field>
 
+          <div className="sm:col-span-2">
+            <p className="mb-1.5 text-sm font-medium text-foreground">Foto da nota/boleto (opcional)</p>
+            <UploadArquivo arquivoNome={arquivo?.nome ?? null} onSelecionar={selecionarArquivo} erro={erroArquivo} />
+          </div>
+
           {erroForm && (
             <div className="sm:col-span-2">
               <ErrorText>{erroForm}</ErrorText>
@@ -250,6 +300,7 @@ export default function FinanceiroPage() {
                 <th className="px-4 py-3 font-bold">Valor</th>
                 <th className="px-4 py-3 font-bold">Vencimento</th>
                 <th className="px-4 py-3 font-bold">Forma</th>
+                <th className="px-4 py-3 font-bold">Nota/boleto</th>
                 <th className="px-4 py-3 font-bold">Situação</th>
                 {podeLancar && <th className="px-4 py-3 font-bold text-right">Ações</th>}
               </tr>
@@ -261,6 +312,21 @@ export default function FinanceiroPage() {
                   <td className="px-4 py-3 text-foreground">{formatarMoeda(lancamento.valor)}</td>
                   <td className="px-4 py-3 text-foreground">{formatarData(lancamento.data_vencimento)}</td>
                   <td className="px-4 py-3 text-foreground capitalize">{lancamento.forma_pagamento}</td>
+                  <td className="px-4 py-3">
+                    {lancamento.comprovante_base64 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          abrirArquivoBase64(lancamento.comprovante_base64!, lancamento.comprovante_mimetype || "application/pdf")
+                        }
+                        className="text-secondary-foreground hover:underline"
+                      >
+                        Ver foto
+                      </button>
+                    ) : (
+                      <span className="text-neutral-600">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {lancamento.data_pagamento ? (
                       <Badge variante="secondary">Pago em {formatarData(lancamento.data_pagamento)}</Badge>
