@@ -248,11 +248,11 @@ export default function ReservasEspacoPage() {
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
-                <th className="px-4 py-3 font-bold">Tipo</th>
-                <th className="px-4 py-3 font-bold">Data</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                {podeGerenciar && <th className="px-4 py-3 font-bold">Mudar status</th>}
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 text-left font-bold">Empresa</th>}
+                <th className="px-4 py-3 text-left font-bold">Tipo</th>
+                <th className="px-4 py-3 text-left font-bold">Data</th>
+                <th className="px-4 py-3 text-left font-bold">Status</th>
+                {podeGerenciar && <th className="px-4 py-3 text-left font-bold">Mudar status</th>}
               </tr>
             </thead>
             <tbody>
@@ -280,10 +280,10 @@ export default function ReservasEspacoPage() {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
-                <th className="px-4 py-3 font-bold">Sala</th>
-                <th className="px-4 py-3 font-bold">Bloco</th>
-                <th className="px-4 py-3 font-bold">Status</th>
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 text-left font-bold">Empresa</th>}
+                <th className="px-4 py-3 text-left font-bold">Sala</th>
+                <th className="px-4 py-3 text-left font-bold">Bloco</th>
+                <th className="px-4 py-3 text-left font-bold">Status</th>
               </tr>
             </thead>
             <tbody>

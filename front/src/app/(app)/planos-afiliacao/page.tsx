@@ -125,10 +125,10 @@ export default function PlanosAfiliacaoPage() {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Plano</th>
-                <th className="px-4 py-3 font-bold">Valor</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold" />
+                <th className="px-4 py-3 text-left font-bold">Plano</th>
+                <th className="px-4 py-3 text-left font-bold">Valor</th>
+                <th className="px-4 py-3 text-left font-bold">Status</th>
+                <th className="px-4 py-3 text-left font-bold" />
               </tr>
             </thead>
             <tbody>
