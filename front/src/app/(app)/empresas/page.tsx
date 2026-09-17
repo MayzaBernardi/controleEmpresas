@@ -20,6 +20,7 @@ import {
   TextArea,
 } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { formatarCnpj } from "@/lib/format";
 
 interface Empresa {
@@ -72,10 +73,12 @@ function LinhaEmpresa({
   empresa,
   token,
   onSalvo,
+  podeEditar,
 }: {
   empresa: Empresa;
   token: string | null;
   onSalvo: () => void;
+  podeEditar: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [campos, setCampos] = useState({
@@ -150,17 +153,19 @@ function LinhaEmpresa({
           <Badge variante={status?.variante ?? "warning"}>{status?.rotulo ?? empresa.status_processo}</Badge>
         </td>
         <td className="px-4 py-3 text-right">
-          <div className="flex justify-end gap-2">
-            <EditButton type="button" onClick={() => setEditando((v) => !v)}>
-              {editando ? "Cancelar" : "Editar"}
-            </EditButton>
-            <DangerButton type="button" onClick={excluir} disabled={salvando}>
-              Excluir
-            </DangerButton>
-          </div>
+          {podeEditar && (
+            <div className="flex justify-end gap-2">
+              <EditButton type="button" onClick={() => setEditando((v) => !v)}>
+                {editando ? "Cancelar" : "Editar"}
+              </EditButton>
+              <DangerButton type="button" onClick={excluir} disabled={salvando}>
+                Excluir
+              </DangerButton>
+            </div>
+          )}
         </td>
       </tr>
-      {editando && (
+      {podeEditar && editando && (
         <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
           <td colSpan={5} className="px-4 py-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -232,6 +237,9 @@ function LinhaEmpresa({
 }
 
 export default function EmpresasPage() {
+  const { usuario } = useAuth();
+  const podeEditar = usuario?.papel === "equipe_programa";
+
   const { dados: empresas, erro, recarregar, token } = useApiResource<Empresa[]>("/empresas");
 
   const [busca, setBusca] = useState("");
@@ -315,14 +323,16 @@ export default function EmpresasPage() {
                 {empresas.length} {empresas.length === 1 ? "empresa" : "empresas"}
               </Badge>
             )}
-            <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
-              {formAberto ? "Cancelar" : "Nova empresa"}
-            </SecondaryButton>
+            {podeEditar && (
+              <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
+                {formAberto ? "Cancelar" : "Nova empresa"}
+              </SecondaryButton>
+            )}
           </div>
         }
       />
 
-      {formAberto && (
+      {podeEditar && formAberto && (
         <form onSubmit={handleSubmit} className="mb-6 grid gap-4 rounded-brand border border-neutral-100 p-5 sm:grid-cols-2">
           <Field label="Razão social" htmlFor="razao_social">
             <Input
@@ -456,7 +466,13 @@ export default function EmpresasPage() {
               </thead>
               <tbody>
                 {itensPaginados.map((empresa) => (
-                  <LinhaEmpresa key={empresa.id} empresa={empresa} token={token} onSalvo={recarregar} />
+                  <LinhaEmpresa
+                    key={empresa.id}
+                    empresa={empresa}
+                    token={token}
+                    onSalvo={recarregar}
+                    podeEditar={podeEditar}
+                  />
                 ))}
               </tbody>
             </table>

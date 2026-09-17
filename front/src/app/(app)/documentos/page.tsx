@@ -19,6 +19,7 @@ import {
   UploadButton,
 } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useApiResource } from "@/lib/useApiResource";
 import { abrirArquivoBase64, lerArquivoComoBase64 } from "@/lib/arquivo";
 
@@ -81,11 +82,15 @@ function LinhaDocumento({
   nomeEmpresa,
   token,
   onSalvo,
+  mostrarEmpresa,
+  podeGerenciar,
 }: {
   documento: Documento;
   nomeEmpresa: (id: string) => string;
   token: string | null;
   onSalvo: () => void;
+  mostrarEmpresa: boolean;
+  podeGerenciar: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [campos, setCampos] = useState({
@@ -168,11 +173,14 @@ function LinhaDocumento({
   }
 
   const temArquivo = Boolean(documento.arquivo_base64 || documento.url_arquivo);
+  const colSpanEdicao = mostrarEmpresa ? 5 : 4;
 
   return (
     <>
       <tr className="border-b border-secondary-subtle-border last:border-0">
-        <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(documento.empresa_id)}</td>
+        {mostrarEmpresa && (
+          <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(documento.empresa_id)}</td>
+        )}
         <td className="px-4 py-3 text-foreground">
           {TIPOS_DOCUMENTO.find((t) => t.valor === documento.tipo_documento)?.rotulo ?? documento.tipo_documento}
         </td>
@@ -199,41 +207,43 @@ function LinhaDocumento({
           </Badge>
         </td>
         <td className="px-4 py-3 text-right">
-          <div className="flex flex-wrap justify-end gap-2">
-            {documento.status === "pendente" && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => avaliar("aprovado")}
-                  disabled={processando}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#F58F1B] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#d97b0f] disabled:opacity-60"
-                >
-                  <GrStatusGood className="h-3.5 w-3.5" />
-                  Aprovar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => avaliar("rejeitado")}
-                  disabled={processando}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-60"
-                >
-                  <FaArrowAltCircleDown className="h-3.5 w-3.5" />
-                  Rejeitar
-                </button>
-              </>
-            )}
-            <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
-              {editando ? "Cancelar" : "Editar"}
-            </EditButton>
-            <DangerButton type="button" onClick={excluir} disabled={processando}>
-              Excluir
-            </DangerButton>
-          </div>
+          {podeGerenciar && (
+            <div className="flex flex-wrap justify-end gap-2">
+              {documento.status === "pendente" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => avaliar("aprovado")}
+                    disabled={processando}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#F58F1B] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#d97b0f] disabled:opacity-60"
+                  >
+                    <GrStatusGood className="h-3.5 w-3.5" />
+                    Aprovar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => avaliar("rejeitado")}
+                    disabled={processando}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                  >
+                    <FaArrowAltCircleDown className="h-3.5 w-3.5" />
+                    Rejeitar
+                  </button>
+                </>
+              )}
+              <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+                {editando ? "Cancelar" : "Editar"}
+              </EditButton>
+              <DangerButton type="button" onClick={excluir} disabled={processando}>
+                Excluir
+              </DangerButton>
+            </div>
+          )}
         </td>
       </tr>
-      {editando && (
+      {podeGerenciar && editando && (
         <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
-          <td colSpan={5} className="px-4 py-4">
+          <td colSpan={colSpanEdicao} className="px-4 py-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Tipo de documento" htmlFor={`tipo-${documento.id}`}>
                 <Select
@@ -292,8 +302,12 @@ function LinhaDocumento({
 }
 
 export default function DocumentosPage() {
+  const { usuario } = useAuth();
+  const podeGerenciar = usuario?.papel === "equipe_programa";
+  const ehEmpresaAfiliada = usuario?.papel === "empresa_afiliada";
+
   const { dados: documentos, erro, recarregar, token } = useApiResource<Documento[]>("/documentos");
-  const { dados: empresas } = useApiResource<Empresa[]>("/empresas");
+  const { dados: empresas } = useApiResource<Empresa[]>(ehEmpresaAfiliada ? null : "/empresas");
 
   const [formAberto, setFormAberto] = useState(false);
   const [campos, setCampos] = useState(CAMPOS_INICIAIS);
@@ -334,7 +348,7 @@ export default function DocumentosPage() {
         method: "POST",
         token,
         body: {
-          empresa_id: campos.empresa_id,
+          empresa_id: ehEmpresaAfiliada ? undefined : campos.empresa_id,
           tipo_documento: campos.tipo_documento,
           nome_arquivo: campos.nome_arquivo,
           url_arquivo: campos.url_arquivo || undefined,
@@ -369,21 +383,23 @@ export default function DocumentosPage() {
       {formAberto && (
         <form onSubmit={handleSubmit} className="mb-6 rounded-brand border border-neutral-100 p-5">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Empresa" htmlFor="empresa_id">
-              <Select
-                id="empresa_id"
-                required
-                value={campos.empresa_id}
-                onChange={(e) => atualizarCampo("empresa_id", e.target.value)}
-              >
-                <option value="">Selecione…</option>
-                {(empresas ?? []).map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresa.nome_fantasia || empresa.razao_social}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {!ehEmpresaAfiliada && (
+              <Field label="Empresa" htmlFor="empresa_id">
+                <Select
+                  id="empresa_id"
+                  required
+                  value={campos.empresa_id}
+                  onChange={(e) => atualizarCampo("empresa_id", e.target.value)}
+                >
+                  <option value="">Selecione…</option>
+                  {(empresas ?? []).map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.nome_fantasia || empresa.razao_social}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
             <Field label="Tipo de documento" htmlFor="tipo_documento">
               <Select
                 id="tipo_documento"
@@ -455,7 +471,7 @@ export default function DocumentosPage() {
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Empresa</th>
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
                 <th className="px-4 py-3 font-bold">Tipo</th>
                 <th className="px-4 py-3 font-bold">Arquivo</th>
                 <th className="px-4 py-3 font-bold">Status</th>
@@ -470,6 +486,8 @@ export default function DocumentosPage() {
                   nomeEmpresa={nomeEmpresa}
                   token={token}
                   onSalvo={recarregar}
+                  mostrarEmpresa={!ehEmpresaAfiliada}
+                  podeGerenciar={podeGerenciar}
                 />
               ))}
             </tbody>

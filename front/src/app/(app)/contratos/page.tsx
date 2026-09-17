@@ -10,6 +10,7 @@ import { DangerButton, EditButton, ErrorText, Field, Input, PrimaryButton, Selec
 import { formatarData, formatarMoeda } from "@/lib/format";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
+import { useAuth } from "@/lib/auth";
 import { abrirArquivoBase64, lerArquivoComoBase64 } from "@/lib/arquivo";
 
 interface Contrato {
@@ -86,11 +87,15 @@ function LinhaContrato({
   nomeEmpresa,
   token,
   onSalvo,
+  mostrarEmpresa,
+  podeGerenciar,
 }: {
   contrato: Contrato;
   nomeEmpresa: (id: string) => string;
   token: string | null;
   onSalvo: () => void;
+  mostrarEmpresa: boolean;
+  podeGerenciar: boolean;
 }) {
   const router = useRouter();
   const pedirConfirmacao = useConfirm();
@@ -175,7 +180,9 @@ function LinhaContrato({
   return (
     <>
       <tr className="border-b border-secondary-subtle-border last:border-0">
-        <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(contrato.empresa_id)}</td>
+        {mostrarEmpresa && (
+          <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(contrato.empresa_id)}</td>
+        )}
         <td className="px-4 py-3 text-foreground">
           {formatarData(contrato.data_inicio_vigencia)} – {formatarData(contrato.data_termino_vigencia)}
         </td>
@@ -199,29 +206,31 @@ function LinhaContrato({
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          <div className="flex flex-wrap justify-end gap-2">
-            {(contrato.estaVencido || contrato.estaProximoVencimento) && (
-              <button
-                type="button"
-                onClick={irParaRenovacao}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#AAD6E1] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#8FC1D0]"
-              >
-                <HiOutlineRefresh className="h-3.5 w-3.5" />
-                Renovar
-              </button>
-            )}
-            <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
-              {editando ? "Cancelar" : "Editar"}
-            </EditButton>
-            <DangerButton type="button" onClick={excluir} disabled={salvando}>
-              Excluir
-            </DangerButton>
-          </div>
+          {podeGerenciar && (
+            <div className="flex flex-wrap justify-end gap-2">
+              {(contrato.estaVencido || contrato.estaProximoVencimento) && (
+                <button
+                  type="button"
+                  onClick={irParaRenovacao}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#AAD6E1] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#8FC1D0]"
+                >
+                  <HiOutlineRefresh className="h-3.5 w-3.5" />
+                  Renovar
+                </button>
+              )}
+              <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+                {editando ? "Cancelar" : "Editar"}
+              </EditButton>
+              <DangerButton type="button" onClick={excluir} disabled={salvando}>
+                Excluir
+              </DangerButton>
+            </div>
+          )}
         </td>
       </tr>
       {editando && (
         <tr className="border-b border-secondary-subtle-border bg-secondary-subtle">
-          <td colSpan={6} className="px-4 py-4">
+          <td colSpan={mostrarEmpresa ? 6 : 5} className="px-4 py-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Número do termo" htmlFor={`termo-${contrato.id}`}>
                 <Input
@@ -290,8 +299,12 @@ function LinhaContrato({
 }
 
 export default function ContratosPage() {
+  const { usuario } = useAuth();
+  const podeGerenciar = usuario?.papel === "equipe_programa";
+  const ehEmpresaAfiliada = usuario?.papel === "empresa_afiliada";
+
   const { dados: contratos, erro, recarregar, token } = useApiResource<Contrato[]>("/contratos");
-  const { dados: empresas } = useApiResource<Empresa[]>("/empresas");
+  const { dados: empresas } = useApiResource<Empresa[]>(ehEmpresaAfiliada ? null : "/empresas");
   const { dados: planos } = useApiResource<PlanoAfiliacao[]>("/planos-afiliacao");
 
   const [formAberto, setFormAberto] = useState(false);
@@ -361,13 +374,15 @@ export default function ContratosPage() {
         title="Contratos"
         subtitle="Cadastrados manualmente pela equipe, com o arquivo assinado anexado."
         action={
-          <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
-            {formAberto ? "Cancelar" : "Cadastrar contrato"}
-          </SecondaryButton>
+          podeGerenciar ? (
+            <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
+              {formAberto ? "Cancelar" : "Cadastrar contrato"}
+            </SecondaryButton>
+          ) : undefined
         }
       />
 
-      {formAberto && (
+      {podeGerenciar && formAberto && (
         <form onSubmit={handleSubmit} className="mb-6 rounded-brand border border-neutral-100 p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Empresa" htmlFor="empresa_id">
@@ -469,7 +484,7 @@ export default function ContratosPage() {
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Empresa</th>
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
                 <th className="px-4 py-3 font-bold">Vigência</th>
                 <th className="px-4 py-3 font-bold">Anuidade</th>
                 <th className="px-4 py-3 font-bold">Situação</th>
@@ -485,6 +500,8 @@ export default function ContratosPage() {
                   nomeEmpresa={nomeEmpresa}
                   token={token}
                   onSalvo={recarregar}
+                  mostrarEmpresa={!ehEmpresaAfiliada}
+                  podeGerenciar={podeGerenciar}
                 />
               ))}
             </tbody>

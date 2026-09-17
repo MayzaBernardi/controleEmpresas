@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { PageHeader } from "@/components/PageHeader";
 import { EditButton, ErrorText, Input, PrimaryButton, SecondaryButton } from "@/components/form";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { formatarMoeda } from "@/lib/format";
 import { useApiResource } from "@/lib/useApiResource";
 
@@ -15,7 +16,17 @@ interface PlanoAfiliacao {
   ativo: boolean;
 }
 
-function LinhaPlano({ plano, token, onSalvo }: { plano: PlanoAfiliacao; token: string | null; onSalvo: () => void }) {
+function LinhaPlano({
+  plano,
+  token,
+  onSalvo,
+  podeEditar,
+}: {
+  plano: PlanoAfiliacao;
+  token: string | null;
+  onSalvo: () => void;
+  podeEditar: boolean;
+}) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(plano.valor);
   const [salvando, setSalvando] = useState(false);
@@ -52,7 +63,7 @@ function LinhaPlano({ plano, token, onSalvo }: { plano: PlanoAfiliacao; token: s
     <tr className="border-b border-secondary-subtle-border last:border-0 align-top">
       <td className="px-4 py-3 font-medium text-foreground">{plano.nome}</td>
       <td className="px-4 py-3 text-foreground">
-        {editando ? (
+        {podeEditar && editando ? (
           <Input
             type="number"
             step="0.01"
@@ -67,25 +78,30 @@ function LinhaPlano({ plano, token, onSalvo }: { plano: PlanoAfiliacao; token: s
         {erro && <p className="mt-1 text-xs text-danger">{erro}</p>}
       </td>
       <td className="px-4 py-3">
-        <button type="button" onClick={alternarAtivo} disabled={salvando}>
+        {podeEditar ? (
+          <button type="button" onClick={alternarAtivo} disabled={salvando}>
+            <Badge variante={plano.ativo ? "secondary" : "neutral"}>{plano.ativo ? "Ativo" : "Inativo"}</Badge>
+          </button>
+        ) : (
           <Badge variante={plano.ativo ? "secondary" : "neutral"}>{plano.ativo ? "Ativo" : "Inativo"}</Badge>
-        </button>
+        )}
       </td>
       <td className="px-4 py-3 text-right">
-        {editando ? (
-          <div className="flex justify-end gap-2">
-            <SecondaryButton type="button" onClick={() => setEditando(false)} className="px-3 py-1.5 text-xs">
-              Cancelar
-            </SecondaryButton>
-            <PrimaryButton type="button" onClick={salvar} disabled={salvando} className="px-3 py-1.5 text-xs">
-              {salvando ? "Salvando…" : "Salvar"}
-            </PrimaryButton>
-          </div>
-        ) : (
-          <EditButton type="button" onClick={() => setEditando(true)} className="px-3 py-1.5 text-xs">
-            Editar valor
-          </EditButton>
-        )}
+        {podeEditar &&
+          (editando ? (
+            <div className="flex justify-end gap-2">
+              <SecondaryButton type="button" onClick={() => setEditando(false)} className="px-3 py-1.5 text-xs">
+                Cancelar
+              </SecondaryButton>
+              <PrimaryButton type="button" onClick={salvar} disabled={salvando} className="px-3 py-1.5 text-xs">
+                {salvando ? "Salvando…" : "Salvar"}
+              </PrimaryButton>
+            </div>
+          ) : (
+            <EditButton type="button" onClick={() => setEditando(true)} className="px-3 py-1.5 text-xs">
+              Editar valor
+            </EditButton>
+          ))}
       </td>
     </tr>
   );
@@ -93,6 +109,8 @@ function LinhaPlano({ plano, token, onSalvo }: { plano: PlanoAfiliacao; token: s
 
 export default function PlanosAfiliacaoPage() {
   const { dados: planos, erro, recarregar, token } = useApiResource<PlanoAfiliacao[]>("/planos-afiliacao");
+  const { usuario } = useAuth();
+  const podeEditar = usuario?.papel === "equipe_programa";
 
   return (
     <div>
@@ -115,7 +133,7 @@ export default function PlanosAfiliacaoPage() {
             </thead>
             <tbody>
               {planos.map((plano) => (
-                <LinhaPlano key={plano.id} plano={plano} token={token} onSalvo={recarregar} />
+                <LinhaPlano key={plano.id} plano={plano} token={token} onSalvo={recarregar} podeEditar={podeEditar} />
               ))}
             </tbody>
           </table>

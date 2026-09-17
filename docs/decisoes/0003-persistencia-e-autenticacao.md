@@ -69,9 +69,28 @@ Adotar o **Sequelize** como ORM da aplicação no backend Node.js.
 
 ---
 
-## 3. Autenticação e Gestão de Sessão: Auth.js
+## 3. Autenticação e Gestão de Sessão
 
-### Contexto
+> **Atualização (2026-09-17): decisão revertida.** A subseção abaixo (Auth.js + SSO
+> institucional) foi a decisão original deste ADR e permanece registrada por histórico, mas
+> **não é mais o que o sistema faz**. Validado com o time que não há um provedor de
+> identidade institucional viável pra integrar (nenhum Google Workspace/Microsoft
+> Entra/SAML disponível para o domínio dos usuários). A decisão atual é **autenticação
+> local**: e-mail + senha própria do sistema, hash bcrypt (`bcryptjs`), sem senha em texto
+> puro em nenhum lugar. RN-02 foi atualizado de acordo.
+>
+> Isso muda menos do que parece no `back/`: o `authMiddleware` já validava um JWT assinado
+> com um segredo compartilhado (`AUTH_SECRET`) — decisão tomada deliberadamente compatível
+> com uma futura migração para Auth.js, e que segue funcionando igual para JWT emitido por
+> login local. O que muda é só *quem emite* o token: antes seria o Auth.js após o handshake
+> OAuth/OIDC; agora é o próprio `back/` (`POST /auth/login`), depois de comparar a senha
+> recebida com `usuarios.senha_hash` via `bcrypt.compare`.
+>
+> Não há autocadastro nem "esqueci minha senha" por e-mail (o projeto não tem infraestrutura
+> de envio de e-mail) — só a `equipe_programa` cria usuário (`POST /usuarios`) e define ou
+> reseta a senha de qualquer usuário (`PATCH /usuarios/:id`, campo opcional `senha`).
+
+### Contexto (decisão original — não vale mais, ver acima)
 
 O sistema possui regras mandatórias de autenticação e controle de acesso:
 
@@ -108,8 +127,8 @@ Adotar o **Auth.js** (NextAuth / Auth.js) para autenticação e gestão de sess�
 
 Este ADR atende diretamente aos seguintes requisitos e regras:
 
-- **RN-01 (Segmentação de acesso)**: Garantida pela atribuição de perfis de ator no token de sessão do Auth.js e validação nos middlewares de frontend e backend.
-- **RN-02 / RNF-01 (Login institucional / SSO)**: Viabilizado pelo suporte nativo a provedores OAuth/OIDC no Auth.js.
+- **RN-01 (Segmentação de acesso)**: Garantida pela atribuição de perfis de ator no token de sessão (`papel`/`empresaId` no JWT) e validação em `authMiddleware`/`requireRole` no backend.
+- **RN-02 (Login)**: Revisado em 2026-09-17 — não é mais SSO institucional (ver nota no início da seção 3). É login local, `POST /auth/login` (e-mail + senha, hash bcrypt), usuário criado e senha definida/resetada só pela `equipe_programa`.
 - **RF-01, RF-02, RF-06, RF-07 (Entidades de negócio)**: Viabilizados pela modelagem relacional no PostgreSQL via Sequelize.
 - **RN-25 (Auditoria de IA)**: Suportada pelo armazenamento de metadados em colunas `JSONB` no PostgreSQL.
 

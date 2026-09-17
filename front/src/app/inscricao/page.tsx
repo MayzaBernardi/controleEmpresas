@@ -118,11 +118,15 @@ export default function InscricaoPage() {
   }
 
   return (
-    <div className="flex flex-1 justify-center bg-neutral-100 px-4 py-12">
-      <div className="w-full max-w-3xl">
-        <div className="mb-8 text-center">
-          <PollenLogo textClassName="text-4xl text-foreground" />
-          <p className="mt-2 text-sm text-neutral-600">Inscrição de empresas afiliadas</p>
+    <div className="relative flex flex-1 justify-center overflow-hidden bg-neutral-100 px-4 py-12">
+      <div
+        className="pointer-events-none absolute -top-32 left-1/2 h-80 w-[32rem] -translate-x-1/2 rounded-full opacity-25 blur-[100px]"
+        style={{ background: "radial-gradient(circle, #cfff92 0%, transparent 70%)" }}
+      />
+      <div className="relative w-full max-w-3xl">
+        <div className="mb-10 text-center">
+          <PollenLogo textClassName="text-6xl text-foreground" />
+          <p className="mt-3 text-sm text-neutral-600">Inscrição de empresas afiliadas</p>
         </div>
 
         <div className="mb-6 flex justify-center gap-2">

@@ -35,11 +35,21 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: true,
       },
+      // Hash bcrypt (nunca a senha em texto puro). Excluído por padrão de toda leitura via
+      // defaultScope abaixo — nunca deve ir pro JSON de resposta da API. Nullable: usuário
+      // recém-criado pode ainda não ter senha definida pela equipe_programa.
+      senha_hash: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
     },
     {
       tableName: 'usuarios',
       freezeTableName: true,
       underscored: true,
+      defaultScope: {
+        attributes: { exclude: ['senha_hash'] },
+      },
       validate: {
         // RN-01: usuário empresa_afiliada precisa estar vinculado a uma empresa para o isolamento (RN-33) funcionar.
         empresaObrigatoriaParaPapelEmpresaAfiliada() {
