@@ -6,6 +6,8 @@ const auditoriaService = require('./auditoriaService');
 
 const CODIGO_STATUS_PENDENTE = 'pendente';
 const CODIGO_STATUS_PAGO = 'pago';
+const TIPO_NOTA_FISCAL = 'nota_fiscal';
+const TIPO_BOLETO = 'boleto';
 
 async function buscarStatusFinanceiroPorCodigo(codigo, { models } = {}) {
   const db = models || require('../models');
@@ -44,6 +46,13 @@ async function listarAtrasados({ models } = {}) {
 }
 
 // RN-16: só contabilidade lança (checado na rota via requireRole, não repetido aqui).
+// RN-44 (revisada 2026-09-17): só lançamento do tipo Nota Fiscal nasce já pago — quando a
+// contabilidade cadastra a nota, ela já foi paga, não há etapa de confirmação separada. Boleto
+// mantém o fluxo original (RN-16/RF-06): nasce com o status vindo no body (ou "pendente" por
+// padrão) e data_pagamento nula, até alguém confirmar manualmente via `confirmarPagamento`
+// (PATCH .../pagamento). `tipo_lancamento` é o campo explícito que decide o caminho — os campos
+// de texto `numero_documento`/`numero_nota_fiscal` são independentes e opcionais demais pra
+// servir de sinal (podem coexistir no mesmo registro).
 async function lancar(body, { usuario, models } = {}) {
   const db = models || require('../models');
 
@@ -57,15 +66,28 @@ async function lancar(body, { usuario, models } = {}) {
     throw new ApiError(400, 'data_vencimento é obrigatório.');
   }
 
-  let statusFinanceiroId = body.status_financeiro_id;
-  if (!statusFinanceiroId) {
-    const statusPendente = await buscarStatusFinanceiroPorCodigo(CODIGO_STATUS_PENDENTE, { models: db });
-    statusFinanceiroId = statusPendente.id;
+  const tipoLancamento = body.tipo_lancamento || TIPO_BOLETO;
+
+  let dataPagamento;
+  let statusFinanceiroId;
+
+  if (tipoLancamento === TIPO_NOTA_FISCAL) {
+    const statusPago = await buscarStatusFinanceiroPorCodigo(CODIGO_STATUS_PAGO, { models: db });
+    dataPagamento = hoje();
+    statusFinanceiroId = statusPago.id;
+  } else {
+    statusFinanceiroId = body.status_financeiro_id;
+    if (!statusFinanceiroId) {
+      const statusPendente = await buscarStatusFinanceiroPorCodigo(CODIGO_STATUS_PENDENTE, { models: db });
+      statusFinanceiroId = statusPendente.id;
+    }
+    dataPagamento = body.data_pagamento ?? null;
   }
 
   const dados = {
     empresa_id: body.empresa_id,
     contrato_id: body.contrato_id ?? null,
+    tipo_lancamento: tipoLancamento,
     numero_documento: body.numero_documento ?? null,
     numero_nota_fiscal: body.numero_nota_fiscal ?? null,
     valor: body.valor,
@@ -73,7 +95,7 @@ async function lancar(body, { usuario, models } = {}) {
     parcela_numero: body.parcela_numero,
     total_parcelas: body.total_parcelas,
     data_vencimento: body.data_vencimento,
-    data_pagamento: body.data_pagamento ?? null,
+    data_pagamento: dataPagamento,
     status_financeiro_id: statusFinanceiroId,
     comprovante_url: body.comprovante_url ?? null,
     comprovante_mimetype: body.comprovante_mimetype ?? null,

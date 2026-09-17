@@ -32,5 +32,6 @@ Upload de documento de uma empresa, exigido pelo edital de afiliação
 - **RN-14**: documentos exigidos pelo edital devem ficar vinculados à empresa.
 - **RN-15** (⚠️ pendência aberta): a lista de documentos obrigatórios por tipo de edital ainda não é um checklist formal — `tipo_documento` cobre os tipos conhecidos hoje, mas a obrigatoriedade por edital não é modelada nesta etapa.
 - **RN-33** (scope nomeado `paraEmpresa(empresaId)`, `where` embrulhado em `Op.and` para permanecer seguro mesmo com `findByPk` — ver nota completa em [`empresa.md`](./empresa.md)).
+- **RN-45** (2026-09-17): `GET /documentos` também é liberado para o papel `contabilidade` (`back/src/routes/documentos.js`), que cai no mesmo caminho de `documentosService.listar` usado por `equipe_programa` (sem scope `paraEmpresa` — vê documentos de todas as empresas). `POST /documentos` e `PATCH /documentos/:id` continuam sem `contabilidade` na lista de `requireRole` — acesso só de leitura.
 - **RN-37** (ADR 0007): `ativo = false` é a única forma de "excluir" — nunca `DELETE`.
 - **RN-38** (ADR 0007 §2): upload de arquivo (PNG/PDF) em base64, alternativo à URL externa.

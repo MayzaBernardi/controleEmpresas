@@ -5,7 +5,10 @@ const ApiError = require('../utils/ApiError');
 const wrapSequelizeErrors = require('../utils/wrapSequelizeErrors');
 const auditoriaService = require('./auditoriaService');
 
-const STATUS_PROSPECCAO_PADRAO = 'em_contato';
+// RN-39: toda prospecção nasce "não constatada" — a equipe ainda não confirmou contato
+// com a empresa nesse momento. Só depois de efetivamente entrar em contato é que alguém
+// muda manualmente para "em_contato" (seguiu adiante) ou "proposta_rejeitada" (recusou).
+const STATUS_PROSPECCAO_PADRAO = 'nao_constatada';
 
 const CAMPOS_CRIACAO = [
   'nome_empresa',

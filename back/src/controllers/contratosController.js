@@ -80,3 +80,29 @@ exports.renovar = async (req, res) => {
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
+
+exports.emitir = async (req, res) => {
+  try {
+    const contrato = await contratosService.emitir(req.params.id, { usuario: req.user });
+    return res.status(201).json(contrato);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
+
+exports.marcarVigente = async (req, res) => {
+  try {
+    const contrato = await contratosService.marcarVigente(req.params.id, { usuario: req.user });
+    return res.json(contrato);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

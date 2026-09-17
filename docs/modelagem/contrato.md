@@ -5,7 +5,13 @@ Migration: [`20260915000006-create-contratos.js`](../../back/src/migrations/2026
 ALTER: [`20260915020005`](../../back/src/migrations/20260915020005-alter-contratos-add-plano-id.js) (plano), [`20260915020006`](../../back/src/migrations/20260915020006-alter-contratos-add-isencao-taxa.js) (isenção)
 
 Contrato de afiliação de uma empresa (RF-03, RF-07), incluindo renovações
-encadeadas e o acompanhamento do trâmite na Procuradoria Jurídica (RN-08).
+encadeadas. **Atualizado em 2026-09-17 (ADR 0008)**: `numero_chamado_procuradoria`/
+`data_envio_procuradoria`/`data_retorno_procuradoria` abaixo descrevem um fluxo
+de Procuradoria Jurídica que foi **aposentado** (RN-08 aposentada) — as
+colunas continuam existindo (histórico de contratos antigos), mas o fluxo
+ativo hoje é emitir (`POST /contratos/:id/emitir`, RN-46) → contabilidade
+baixa e envia para assinatura eletrônica externa (Satelitti, fora do
+sistema) → equipe confirma manualmente `PATCH /contratos/:id/vigente`.
 
 ## Campos
 
@@ -18,7 +24,7 @@ encadeadas e o acompanhamento do trâmite na Procuradoria Jurídica (RN-08).
 | `data_inicio_vigencia` | DATEONLY | sim | |
 | `data_termino_vigencia` | DATEONLY | sim | Vigência anual (RN-21). |
 | `status_contrato_id` | INTEGER (FK → `status_contrato.id`) | sim | Estado formal, registrado manualmente pela equipe. Ver [`status-contrato.md`](./status-contrato.md). |
-| `numero_chamado_procuradoria` | STRING(100) | não | RN-08/RN-10. |
+| `numero_chamado_procuradoria` | STRING(100) | não | Histórico — RN-08/RN-10, aposentadas (ADR 0008). Não preenchido pelo fluxo ativo. |
 | `data_envio_procuradoria` | DATEONLY | não | |
 | `data_retorno_procuradoria` | DATEONLY | não | |
 | `valor_anuidade` | DECIMAL(12,2) | sim | |
@@ -29,9 +35,9 @@ encadeadas e o acompanhamento do trâmite na Procuradoria Jurídica (RN-08).
 | `documento_referencia` | STRING(100) | condicional | Ex.: `"DISTRATO 129/2023-1"`. Obrigatório quando `isento_taxa = true` (RN-34). |
 | `isencao_inicio` | DATEONLY | não | |
 | `isencao_fim` | DATEONLY | não | |
-| `arquivo_nome` | STRING(500) | não | Nome do arquivo do contrato assinado (PNG/PDF), anexado no cadastro/edição. ADR 0007 §2. |
+| `arquivo_nome` | STRING(500) | não | Nome do arquivo do contrato (PNG/PDF). Preenchido automaticamente por `contratosService.emitir` (`contrato-<numero_termo>.pdf`, RN-46/ADR 0008) ou manualmente via upload no cadastro/edição (RN-38/ADR 0007 §2) — as duas formas convivem. |
 | `arquivo_mimetype` | STRING(150) | não | Ex.: `application/pdf`. ADR 0007 §2. |
-| `arquivo_base64` | TEXT | não | Conteúdo do arquivo em base64, direto no Postgres — sem storage externo (RN-38/ADR 0007 §2). |
+| `arquivo_base64` | TEXT | não | Conteúdo do arquivo em base64, direto no Postgres — sem storage externo (RN-38/ADR 0007 §2). Gerado automaticamente por `contratosService.emitir` (RN-46/ADR 0008) a partir de `back/public/templates/minuta-contrato-afiliacao.docx`, ou definido manualmente via upload. |
 | `ativo` | BOOLEAN | sim | Default `true`. Excluir é soft-delete (RN-37/ADR 0007). |
 | `created_at` / `updated_at` | TIMESTAMP | sim (auto) | |
 
@@ -49,7 +55,8 @@ encadeadas e o acompanhamento do trâmite na Procuradoria Jurídica (RN-08).
 
 ## Regras de negócio aplicadas
 
-- **RN-09 / RN-11**: vigência formal depende de todas as assinaturas concluídas (ver [`assinatura.md`](./assinatura.md)) — não é uma constraint de banco, é responsabilidade do service ao transicionar `status_contrato_id` para `vigente`.
+- ~~**RN-09 / RN-11**: vigência formal depende de todas as assinaturas concluídas (ver [`assinatura.md`](./assinatura.md)).~~ **Aposentada (ADR 0008)**: `status_contrato_id = vigente` passou a ser uma confirmação manual da equipe (`contratosService.marcarVigente`), sem depender de assinaturas rastreadas individualmente no sistema — a assinatura em si acontece fora do sistema (serviço externo Satelitti).
+- **RN-46 / RN-47** (ADR 0008, atualizada 2026-09-17): `contratosService.emitir` (só `equipe_programa`) gera `arquivo_base64`/`arquivo_mimetype`/`arquivo_nome` automaticamente a partir do template e avança `status_contrato_id` para `em_assinatura`; valida antes que a empresa vinculada tenha todos os dados exigidos pelo template (RN-47), recusando com `400` caso falte algo. `contratosService.marcarVigente` (`equipe_programa` **ou** `contabilidade`) avança para `vigente`, sem validação adicional.
 - **RN-30** (getters virtuais `estaVencido`/`estaProximoVencimento`, calculados em leitura, nunca persistidos):
   - "Renovação pendente": `data_termino_vigencia ≤ hoje + 60 dias` **e** `status_contrato_id` formal ainda `vigente`. A combinação com o status formal é feita no service (os getters do model só cobrem a parte de data).
   - "Encerrado por vencimento": `data_termino_vigencia < hoje` **e** sem contrato subsequente vigente vinculado via `contrato_anterior_id`.

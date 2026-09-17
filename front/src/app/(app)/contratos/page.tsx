@@ -2,7 +2,9 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { FaFileContract } from "react-icons/fa";
 import { HiOutlineRefresh } from "react-icons/hi";
+import { RiContractFill } from "react-icons/ri";
 import { Badge } from "@/components/Badge";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -33,6 +35,52 @@ interface Empresa {
   id: string;
   razao_social: string;
   nome_fantasia: string | null;
+  cnpj: string | null;
+  identificador_estrangeiro: string | null;
+  endereco_logradouro: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  telefone: string | null;
+  representante_legal: string | null;
+  representante_legal_cpf: string | null;
+  representante_legal_email: string | null;
+  contatos: { email?: string | null; telefone?: string | null } | null;
+}
+
+// RN-47: dados exigidos por contratosService.emitir — usado tanto para detectar o que falta
+// (e decidir se abre o modal de completar dados) quanto para pré-preencher o formulário dele.
+const CAMPOS_EMISSAO = [
+  { chave: "numero_termo", rotulo: "Número do termo", origem: "contrato" as const, opcional: false },
+  { chave: "cnpj", rotulo: "CNPJ / identificador estrangeiro", origem: "empresa" as const, opcional: false },
+  { chave: "endereco_logradouro", rotulo: "Logradouro", origem: "empresa" as const, opcional: false },
+  { chave: "endereco_numero", rotulo: "Número", origem: "empresa" as const, opcional: false },
+  { chave: "endereco_complemento", rotulo: "Complemento (opcional)", origem: "empresa" as const, opcional: true },
+  { chave: "endereco_bairro", rotulo: "Bairro", origem: "empresa" as const, opcional: false },
+  { chave: "cidade", rotulo: "Cidade", origem: "empresa" as const, opcional: false },
+  { chave: "uf", rotulo: "UF", origem: "empresa" as const, opcional: false },
+  { chave: "telefone", rotulo: "Telefone da empresa", origem: "empresa" as const, opcional: false },
+  { chave: "representante_legal", rotulo: "Nome do representante legal", origem: "empresa" as const, opcional: false },
+  { chave: "representante_legal_cpf", rotulo: "CPF do representante", origem: "empresa" as const, opcional: false },
+  { chave: "representante_legal_email", rotulo: "E-mail do representante", origem: "empresa" as const, opcional: false },
+  { chave: "email_contato", rotulo: "E-mail de contato da empresa", origem: "empresa" as const, opcional: false },
+] as const;
+
+type ChaveCampoEmissao = (typeof CAMPOS_EMISSAO)[number]["chave"];
+
+function valorAtualCampoEmissao(chave: ChaveCampoEmissao, contrato: Contrato, empresa: Empresa | undefined): string {
+  if (chave === "numero_termo") return contrato.numero_termo ?? "";
+  if (chave === "cnpj") return empresa?.cnpj ?? empresa?.identificador_estrangeiro ?? "";
+  if (chave === "email_contato") return empresa?.contatos?.email ?? "";
+  return (empresa?.[chave] as string | null | undefined) ?? "";
+}
+
+function camposFaltantesParaEmissao(contrato: Contrato, empresa: Empresa | undefined): string[] {
+  return CAMPOS_EMISSAO.filter((campo) => !campo.opcional)
+    .filter((campo) => !valorAtualCampoEmissao(campo.chave, contrato, empresa).trim())
+    .map((campo) => campo.rotulo);
 }
 
 interface PlanoAfiliacao {
@@ -82,20 +130,265 @@ function UploadArquivo({
   );
 }
 
+// Modal que aparece quando falta algum dado exigido pela emissão (RN-47) — deixa completar
+// tudo ali mesmo (dados da empresa + número do termo do contrato) em vez de só mostrar a
+// mensagem de erro do backend e obrigar a ir editar em outra tela. Mesmo padrão visual do
+// overlay/cartão de `ConfirmDialog` (@/components/ConfirmDialog), só mais largo por ter um
+// formulário em vez de uma pergunta simples.
+function ModalCompletarDadosEmissao({
+  contrato,
+  empresa,
+  token,
+  onFechar,
+  onEmitido,
+}: {
+  contrato: Contrato;
+  empresa: Empresa | undefined;
+  token: string | null;
+  onFechar: () => void;
+  onEmitido: () => void;
+}) {
+  const [campos, setCampos] = useState<Record<ChaveCampoEmissao, string>>(() => {
+    const iniciais = {} as Record<ChaveCampoEmissao, string>;
+    for (const campo of CAMPOS_EMISSAO) {
+      iniciais[campo.chave] = valorAtualCampoEmissao(campo.chave, contrato, empresa);
+    }
+    return iniciais;
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  function atualizarCampo(chave: ChaveCampoEmissao, valor: string) {
+    setCampos((atual) => ({ ...atual, [chave]: valor }));
+  }
+
+  async function salvarEEmitir() {
+    if (!empresa) {
+      setErro("Empresa do contrato não encontrada.");
+      return;
+    }
+    setSalvando(true);
+    setErro(null);
+    try {
+      await apiFetch(`/contratos/${contrato.id}`, {
+        method: "PATCH",
+        token,
+        body: { numero_termo: campos.numero_termo },
+      });
+      await apiFetch(`/empresas/${empresa.id}`, {
+        method: "PATCH",
+        token,
+        body: {
+          endereco_logradouro: campos.endereco_logradouro,
+          endereco_numero: campos.endereco_numero,
+          endereco_complemento: campos.endereco_complemento || null,
+          endereco_bairro: campos.endereco_bairro,
+          cidade: campos.cidade,
+          uf: campos.uf,
+          telefone: campos.telefone,
+          representante_legal: campos.representante_legal,
+          representante_legal_cpf: campos.representante_legal_cpf,
+          representante_legal_email: campos.representante_legal_email,
+          contatos: { ...empresa.contatos, email: campos.email_contato },
+        },
+      });
+      await apiFetch(`/contratos/${contrato.id}/emitir`, { method: "POST", token });
+      onEmitido();
+      onFechar();
+    } catch (error) {
+      setErro(error instanceof ApiError ? error.message : "Não foi possível salvar os dados e emitir o contrato.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onFechar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(evento) => evento.stopPropagation()}
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-brand border border-neutral-100 bg-neutral-100 p-6 shadow-lg shadow-black/40"
+      >
+        <p className="text-center font-display text-lg font-semibold text-foreground">Completar dados para emitir o contrato</p>
+        <p className="mt-1 text-center text-sm text-neutral-800">
+          A minuta exige alguns dados que ainda não estão preenchidos. Complete abaixo e emita o contrato — os dados
+          da empresa ficam salvos para as próximas emissões.
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {CAMPOS_EMISSAO.map((campo) => (
+            <Field key={campo.chave} label={campo.rotulo} htmlFor={`emissao-${campo.chave}`} className="text-center">
+              <Input
+                id={`emissao-${campo.chave}`}
+                required={!campo.opcional}
+                value={campos[campo.chave]}
+                onChange={(e) => atualizarCampo(campo.chave, e.target.value)}
+                className="border-black! bg-white! text-center text-black!"
+              />
+            </Field>
+          ))}
+        </div>
+
+        {erro && (
+          <div className="mt-4">
+            <ErrorText>{erro}</ErrorText>
+          </div>
+        )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onFechar}
+            disabled={salvando}
+            className="rounded-full border border-neutral-100 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-background disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <PrimaryButton type="button" onClick={salvarEEmitir} disabled={salvando}>
+            {salvando ? "Salvando…" : "Salvar e emitir"}
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BotaoEmitirContrato({
+  contrato,
+  empresa,
+  token,
+  onSalvo,
+}: {
+  contrato: Contrato;
+  empresa: Empresa | undefined;
+  token: string | null;
+  onSalvo: () => void;
+}) {
+  const [processando, setProcessando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [modalAberto, setModalAberto] = useState(false);
+  const pedirConfirmacao = useConfirm();
+
+  async function emitir() {
+    const faltantes = camposFaltantesParaEmissao(contrato, empresa);
+    if (faltantes.length > 0) {
+      setModalAberto(true);
+      return;
+    }
+    if (
+      !(await pedirConfirmacao({
+        mensagem: "Gerar o contrato em PDF a partir dos dados cadastrados da empresa?",
+        tone: "default",
+        confirmarLabel: "Emitir contrato",
+      }))
+    )
+      return;
+    setProcessando(true);
+    setErro(null);
+    try {
+      await apiFetch(`/contratos/${contrato.id}/emitir`, { method: "POST", token });
+      onSalvo();
+    } catch (error) {
+      setErro(error instanceof ApiError ? error.message : "Não foi possível emitir o contrato.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={emitir}
+        disabled={processando}
+        className="inline-flex items-center gap-1.5 rounded-full bg-[#F5DEA3] px-3 py-1.5 text-xs font-medium text-[#5c4400] transition-colors hover:bg-[#EFD284] disabled:opacity-60"
+      >
+        <FaFileContract className="h-3.5 w-3.5" />
+        {processando ? "Emitindo…" : "Emitir contrato"}
+      </button>
+      {erro && <p className="max-w-[220px] text-right text-xs text-danger">{erro}</p>}
+      {modalAberto && (
+        <ModalCompletarDadosEmissao
+          contrato={contrato}
+          empresa={empresa}
+          token={token}
+          onFechar={() => setModalAberto(false)}
+          onEmitido={onSalvo}
+        />
+      )}
+    </div>
+  );
+}
+
+function BotaoMarcarVigente({
+  contrato,
+  token,
+  onSalvo,
+}: {
+  contrato: Contrato;
+  token: string | null;
+  onSalvo: () => void;
+}) {
+  const [processando, setProcessando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const pedirConfirmacao = useConfirm();
+
+  async function marcarVigente() {
+    if (
+      !(await pedirConfirmacao({
+        mensagem: "Confirmar que o contrato voltou assinado e marcá-lo como vigente?",
+        tone: "default",
+        confirmarLabel: "Marcar como vigente",
+      }))
+    )
+      return;
+    setProcessando(true);
+    setErro(null);
+    try {
+      await apiFetch(`/contratos/${contrato.id}/vigente`, { method: "PATCH", token });
+      onSalvo();
+    } catch (error) {
+      setErro(error instanceof ApiError ? error.message : "Não foi possível marcar o contrato como vigente.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={marcarVigente}
+        disabled={processando}
+        className="inline-flex items-center gap-1.5 rounded-full bg-[#4A90E2] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#3A7BC8] disabled:opacity-60"
+      >
+        <RiContractFill className="h-3.5 w-3.5" />
+        {processando ? "Marcando…" : "Marcar como vigente"}
+      </button>
+      {erro && <p className="max-w-[220px] text-right text-xs text-danger">{erro}</p>}
+    </div>
+  );
+}
+
 function LinhaContrato({
   contrato,
   nomeEmpresa,
+  empresa,
   token,
   onSalvo,
   mostrarEmpresa,
   podeGerenciar,
+  podeMarcarVigente,
 }: {
   contrato: Contrato;
   nomeEmpresa: (id: string) => string;
+  empresa: Empresa | undefined;
   token: string | null;
   onSalvo: () => void;
   mostrarEmpresa: boolean;
   podeGerenciar: boolean;
+  podeMarcarVigente: boolean;
 }) {
   const router = useRouter();
   const pedirConfirmacao = useConfirm();
@@ -206,26 +499,36 @@ function LinhaContrato({
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          {podeGerenciar && (
-            <div className="flex flex-wrap justify-end gap-2">
-              {(contrato.estaVencido || contrato.estaProximoVencimento) && (
-                <button
-                  type="button"
-                  onClick={irParaRenovacao}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#AAD6E1] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#8FC1D0]"
-                >
-                  <HiOutlineRefresh className="h-3.5 w-3.5" />
-                  Renovar
-                </button>
-              )}
-              <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
-                {editando ? "Cancelar" : "Editar"}
-              </EditButton>
-              <DangerButton type="button" onClick={excluir} disabled={salvando}>
-                Excluir
-              </DangerButton>
-            </div>
-          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            {podeGerenciar && (
+              <BotaoEmitirContrato contrato={contrato} empresa={empresa} token={token} onSalvo={onSalvo} />
+            )}
+            {/* Marcar como vigente também é liberado pra contabilidade: é quem manda assinar e
+                assina em nome do Pollen, então é quem sabe quando a assinatura foi finalizada. */}
+            {podeMarcarVigente && contrato.arquivo_base64 && (
+              <BotaoMarcarVigente contrato={contrato} token={token} onSalvo={onSalvo} />
+            )}
+            {podeGerenciar && (contrato.estaVencido || contrato.estaProximoVencimento) && (
+              <button
+                type="button"
+                onClick={irParaRenovacao}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#AAD6E1] px-3 py-1.5 text-xs font-medium text-[#0a151f] transition-colors hover:bg-[#8FC1D0]"
+              >
+                <HiOutlineRefresh className="h-3.5 w-3.5" />
+                Renovar
+              </button>
+            )}
+            {podeGerenciar && (
+              <>
+                <EditButton type="button" onClick={() => setEditando((v) => !v)} className="px-3 py-1.5 text-xs">
+                  {editando ? "Cancelar" : "Editar"}
+                </EditButton>
+                <DangerButton type="button" onClick={excluir} disabled={salvando}>
+                  Excluir
+                </DangerButton>
+              </>
+            )}
+          </div>
         </td>
       </tr>
       {editando && (
@@ -301,6 +604,7 @@ function LinhaContrato({
 export default function ContratosPage() {
   const { usuario } = useAuth();
   const podeGerenciar = usuario?.papel === "equipe_programa";
+  const podeMarcarVigente = usuario?.papel === "equipe_programa" || usuario?.papel === "contabilidade";
   const ehEmpresaAfiliada = usuario?.papel === "empresa_afiliada";
 
   const { dados: contratos, erro, recarregar, token } = useApiResource<Contrato[]>("/contratos");
@@ -320,6 +624,14 @@ export default function ContratosPage() {
       mapa.set(empresa.id, empresa.nome_fantasia || empresa.razao_social);
     }
     return (id: string) => mapa.get(id) ?? id;
+  }, [empresas]);
+
+  const empresaPorId = useMemo(() => {
+    const mapa = new Map<string, Empresa>();
+    for (const empresa of empresas ?? []) {
+      mapa.set(empresa.id, empresa);
+    }
+    return (id: string) => mapa.get(id);
   }, [empresas]);
 
   function atualizarCampo<K extends keyof typeof CAMPOS_INICIAIS>(campo: K, valor: string) {
@@ -372,7 +684,7 @@ export default function ContratosPage() {
     <div>
       <PageHeader
         title="Contratos"
-        subtitle="Cadastrados manualmente pela equipe, com o arquivo assinado anexado."
+        subtitle="Listagem de contratos para enviar às empresas afiliadas"
         action={
           podeGerenciar ? (
             <SecondaryButton type="button" onClick={() => setFormAberto((v) => !v)}>
@@ -498,10 +810,12 @@ export default function ContratosPage() {
                   key={contrato.id}
                   contrato={contrato}
                   nomeEmpresa={nomeEmpresa}
+                  empresa={empresaPorId(contrato.empresa_id)}
                   token={token}
                   onSalvo={recarregar}
                   mostrarEmpresa={!ehEmpresaAfiliada}
                   podeGerenciar={podeGerenciar}
+                  podeMarcarVigente={podeMarcarVigente}
                 />
               ))}
             </tbody>

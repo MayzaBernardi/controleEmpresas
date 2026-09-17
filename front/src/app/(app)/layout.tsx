@@ -27,10 +27,13 @@ const MODULOS_EQUIPE_PROGRAMA: ModuloNav[] = [
 ];
 
 // Contabilidade lança boleto/nota e confirma pagamento em Financeiro (RN-16) — os demais
-// itens são leitura (o back já libera GET sem exigir isolamento por empresa pra esse papel).
+// itens, incluindo Documentos, são leitura (o back já libera GET sem exigir isolamento por
+// empresa pra esse papel; cadastrar/editar/aprovar/rejeitar/excluir documento continua
+// bloqueado no back e a tela já esconde essas ações pra quem não pode usá-las).
 const MODULOS_CONTABILIDADE: ModuloNav[] = [
   { label: "Financeiro", href: "/financeiro-lancamentos" },
   { label: "Empresas", href: "/empresas" },
+  { label: "Documentos", href: "/documentos" },
   { label: "Contratos", href: "/contratos" },
   { label: "Planos de afiliação", href: "/planos-afiliacao" },
 ];
