@@ -20,7 +20,7 @@ explicitamente.
 | Contabilidade/Financeiro | Lança NF e boleto, confirma pagamentos. Só mexe na parte financeira — não edita cadastro nem contrato.           |
 
 - **RN-01** — Todo acesso ao sistema é segmentado por ator (RF-08): cada perfil só enxerga e edita o que é da sua responsabilidade. Uma empresa afiliada nunca vê dados de outra empresa.
-- **RN-02** — O login é institucional (SSO), sem senha própria do sistema (RNF-01).
+- **RN-02** — ~~O login é institucional (SSO), sem senha própria do sistema (RNF-01).~~ **Revisado em 2026-09-17**: SSO institucional foi validado com o time como inviável. O login é local (e-mail + senha própria do sistema, hash bcrypt). Não há autocadastro nem "esqueci minha senha" por e-mail: a equipe do programa cria cada usuário e define/reseta a senha manualmente pela tela de Usuários (ver [ADR 0003 §3](./decisoes/0003-persistencia-e-autenticacao.md)).
 
 ## 2. Cadastro de afiliados
 
