@@ -6,7 +6,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth, type Usuario } from "@/lib/auth";
 import { PollenLogo } from "@/components/PollenLogo";
 
-interface DevLoginResposta {
+interface LoginResposta {
   token: string;
   usuario: Usuario;
 }
@@ -15,8 +15,14 @@ export default function LoginPage() {
   const router = useRouter();
   const { usuario, carregando, login } = useAuth();
   const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  const [mostrarDevLogin, setMostrarDevLogin] = useState(false);
+  const [devEmail, setDevEmail] = useState("");
+  const [devEnviando, setDevEnviando] = useState(false);
+  const [devErro, setDevErro] = useState<string | null>(null);
 
   useEffect(() => {
     if (!carregando && usuario) {
@@ -30,9 +36,9 @@ export default function LoginPage() {
     setEnviando(true);
 
     try {
-      const resposta = await apiFetch<DevLoginResposta>("/auth/dev-login", {
+      const resposta = await apiFetch<LoginResposta>("/auth/login", {
         method: "POST",
-        body: { email },
+        body: { email, senha },
       });
       login(resposta.token, resposta.usuario);
       router.push("/empresas");
@@ -43,10 +49,28 @@ export default function LoginPage() {
     }
   }
 
+  async function handleDevSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDevErro(null);
+    setDevEnviando(true);
+
+    try {
+      const resposta = await apiFetch<LoginResposta>("/auth/dev-login", {
+        method: "POST",
+        body: { email: devEmail },
+      });
+      login(resposta.token, resposta.usuario);
+      router.push("/empresas");
+    } catch (error) {
+      setDevErro(error instanceof ApiError ? error.message : "Não foi possível conectar ao servidor.");
+    } finally {
+      setDevEnviando(false);
+    }
+  }
+
   return (
-    // Fundo preto fixo (não acompanha o tema claro/escuro do sistema) — é a mesma
-    // identidade visual do site institucional, deliberadamente igual nas duas telas.
-    <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-black px-4 py-16">
+    // Mesmo fundo escuro do resto do sistema (bg-neutral-100, ver globals.css).
+    <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-neutral-100 px-4 py-16">
       <div
         className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-25 blur-[100px]"
         style={{ background: "radial-gradient(circle, #cfff92 0%, transparent 70%)" }}
@@ -54,7 +78,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         <div className="mb-10 text-center">
-          <PollenLogo textClassName="text-5xl text-white" />
+          <PollenLogo textClassName="text-7xl text-foreground" />
           <p className="mt-3 text-xs font-semibold tracking-[0.2em] text-white/70">
             PARQUE CIENTÍFICO E TECNOLÓGICO
           </p>
@@ -82,6 +106,20 @@ export default function LoginPage() {
             className="mt-2 w-full rounded-brand border border-gray-200 bg-white px-4 py-2.5 text-sm text-black outline-none focus:border-[#53663a] focus:ring-2 focus:ring-secondary"
           />
 
+          <label htmlFor="senha" className="mt-4 block text-sm font-medium text-black">
+            Senha
+          </label>
+          <input
+            id="senha"
+            name="senha"
+            type="password"
+            required
+            value={senha}
+            onChange={(event) => setSenha(event.target.value)}
+            placeholder="••••••••"
+            className="mt-2 w-full rounded-brand border border-gray-200 bg-white px-4 py-2.5 text-sm text-black outline-none focus:border-[#53663a] focus:ring-2 focus:ring-secondary"
+          />
+
           {erro && (
             <p className="mt-4 rounded-brand bg-danger/10 px-4 py-2.5 text-sm text-danger">{erro}</p>
           )}
@@ -93,15 +131,56 @@ export default function LoginPage() {
           >
             {enviando ? "Entrando…" : "Entrar"}
           </button>
-
-          <p className="mt-6 rounded-brand border border-[#ecffd3] bg-[#f5ffe9] px-4 py-3 text-xs text-[#53663a]">
-            Ambiente de desenvolvimento: o login institucional (SSO) ainda não foi implementado
-            (ADR 0003). Use o e-mail de um usuário já cadastrado, ex.:{" "}
-            <span className="font-medium">ana.ribeiro@pollenparque.org.br</span> (equipe do
-            programa) ou <span className="font-medium">carla.souza@pollenparque.org.br</span>{" "}
-            (contabilidade).
-          </p>
         </form>
+
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setMostrarDevLogin((atual) => !atual)}
+            className="text-xs text-white/40 underline decoration-dotted underline-offset-2 hover:text-white/60"
+          >
+            Ambiente de desenvolvimento: entrar sem senha (dev-login)
+          </button>
+
+          {mostrarDevLogin && (
+            <form
+              onSubmit={handleDevSubmit}
+              className="mt-3 rounded-brand border border-white/10 bg-white/5 p-4 text-left"
+            >
+              <label htmlFor="dev-email" className="block text-xs font-medium text-white/60">
+                E-mail (sem senha)
+              </label>
+              <input
+                id="dev-email"
+                name="dev-email"
+                type="email"
+                required
+                value={devEmail}
+                onChange={(event) => setDevEmail(event.target.value)}
+                placeholder="nome.sobrenome@pollenparque.org.br"
+                className="mt-1.5 w-full rounded-brand border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-white/30"
+              />
+
+              {devErro && <p className="mt-2 text-xs text-danger">{devErro}</p>}
+
+              <button
+                type="submit"
+                disabled={devEnviando}
+                className="mt-3 w-full rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/20 disabled:opacity-60"
+              >
+                {devEnviando ? "Entrando…" : "Entrar sem senha"}
+              </button>
+
+              <p className="mt-3 text-[11px] leading-relaxed text-white/40">
+                Atalho de desenvolvimento — funciona só fora de produção. Usuários
+                recém-criados/sem senha definida ainda podem entrar assim. Ex.:{" "}
+                <span className="text-white/60">ana.ribeiro@pollenparque.org.br</span> (equipe do
+                programa) ou <span className="text-white/60">carla.souza@pollenparque.org.br</span>{" "}
+                (contabilidade).
+              </p>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -28,3 +28,16 @@ exports.atualizar = async (req, res) => {
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
+
+exports.criar = async (req, res) => {
+  try {
+    const usuario = await usuariosService.criar(req.body, { usuario: req.user });
+    return res.status(201).json(usuario);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};

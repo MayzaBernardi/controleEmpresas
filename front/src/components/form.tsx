@@ -1,6 +1,7 @@
 "use client";
 
-import { Children, isValidElement, useEffect, useRef, useState } from "react";
+import { Children, isValidElement, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   ChangeEvent,
   InputHTMLAttributes,
@@ -52,24 +53,54 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
 // (value/onChange/<option> como children), então nenhuma tela que já usa <Select> mudou.
 export function Select({ value, onChange, children, className, id, disabled }: SelectHTMLAttributes<HTMLSelectElement>) {
   const [aberto, setAberto] = useState(false);
+  const [posicao, setPosicao] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const botaoRef = useRef<HTMLButtonElement>(null);
+  const listaRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     function aoClicarFora(evento: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(evento.target as Node)) {
-        setAberto(false);
-      }
+      const alvo = evento.target as Node;
+      // A lista agora é portada pra document.body (ver comentário abaixo), então não é mais
+      // descendente de containerRef — precisa checar as duas refs, senão um clique numa
+      // opção fecharia o dropdown (mousedown fora do container) antes do onClick da opção
+      // disparar.
+      if (containerRef.current?.contains(alvo) || listaRef.current?.contains(alvo)) return;
+      setAberto(false);
     }
     function aoTeclarEsc(evento: KeyboardEvent) {
       if (evento.key === "Escape") setAberto(false);
     }
+    // Fecha ao rolar em vez de reposicionar continuamente — dropdown é uma interação curta,
+    // não vale a pena manter listener de scroll recalculando posição o tempo todo. `true`
+    // (capture) pega o scroll de containers internos (ex.: o wrapper com overflow-x-auto das
+    // tabelas), que não borbulha até window por padrão.
+    function aoRolar() {
+      setAberto(false);
+    }
     document.addEventListener("mousedown", aoClicarFora);
     document.addEventListener("keydown", aoTeclarEsc);
+    window.addEventListener("scroll", aoRolar, true);
     return () => {
       document.removeEventListener("mousedown", aoClicarFora);
       document.removeEventListener("keydown", aoTeclarEsc);
+      window.removeEventListener("scroll", aoRolar, true);
     };
   }, []);
+
+  // Posição calculada a partir do botão e a lista renderizada via portal em document.body,
+  // com position: fixed — um <ul absolute> comum fica preso ao clipping de qualquer
+  // ancestral com overflow (ex.: o wrapper com scroll das tabelas), que corta o filho mesmo
+  // com z-index alto; isso deixava o dropdown de "Mudar status" em reservas-espaco impossível
+  // de abrir (bug reportado em 2026-09-17). Portal escapa desse clipping porque sai da
+  // subárvore do DOM do container, não só da posição visual.
+  // useLayoutEffect (não useEffect): calcula a posição antes do navegador pintar, pra lista
+  // já abrir no lugar certo em vez de aparecer um frame em (0,0) e "pular" pra posição real.
+  useLayoutEffect(() => {
+    if (!aberto || !botaoRef.current) return;
+    const rect = botaoRef.current.getBoundingClientRect();
+    setPosicao({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+  }, [aberto]);
 
   const opcoes = Children.toArray(children).filter(isValidElement) as ReactElement<{
     value?: string;
@@ -85,6 +116,7 @@ export function Select({ value, onChange, children, className, id, disabled }: S
   return (
     <div ref={containerRef} className={`relative ${className ?? ""}`}>
       <button
+        ref={botaoRef}
         type="button"
         id={id}
         disabled={disabled}
@@ -96,27 +128,34 @@ export function Select({ value, onChange, children, className, id, disabled }: S
           className={`h-4 w-4 shrink-0 text-neutral-600 transition-transform ${aberto ? "rotate-180" : ""}`}
         />
       </button>
-      {aberto && (
-        <ul className="absolute z-20 mt-1.5 max-h-60 w-full overflow-auto rounded-brand border border-secondary-subtle-border bg-neutral-100 py-1 shadow-lg shadow-black/40">
-          {opcoes.map((opcao, indice) => {
-            const valorOpcao = opcao.props.value ?? "";
-            const ativa = valorOpcao === (value ?? "");
-            return (
-              <li key={valorOpcao || indice}>
-                <button
-                  type="button"
-                  onClick={() => selecionar(valorOpcao)}
-                  className={`block w-full px-3 py-2 text-left text-sm transition-colors ${
-                    ativa ? "bg-secondary-subtle text-secondary-foreground" : "text-foreground hover:bg-secondary/15"
-                  }`}
-                >
-                  {opcao.props.children}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {aberto &&
+        posicao &&
+        createPortal(
+          <ul
+            ref={listaRef}
+            style={{ position: "fixed", top: posicao.top, left: posicao.left, width: posicao.width }}
+            className="z-50 max-h-60 overflow-auto rounded-brand border border-secondary-subtle-border bg-neutral-100 py-1 shadow-lg shadow-black/40"
+          >
+            {opcoes.map((opcao, indice) => {
+              const valorOpcao = opcao.props.value ?? "";
+              const ativa = valorOpcao === (value ?? "");
+              return (
+                <li key={valorOpcao || indice}>
+                  <button
+                    type="button"
+                    onClick={() => selecionar(valorOpcao)}
+                    className={`block w-full px-3 py-2 text-left text-sm transition-colors ${
+                      ativa ? "bg-secondary-subtle text-secondary-foreground" : "text-foreground hover:bg-secondary/15"
+                    }`}
+                  >
+                    {opcao.props.children}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>,
+          document.body
+        )}
     </div>
   );
 }

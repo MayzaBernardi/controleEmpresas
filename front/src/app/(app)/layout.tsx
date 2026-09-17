@@ -26,10 +26,26 @@ const MODULOS_EQUIPE_PROGRAMA: ModuloNav[] = [
   { label: "Usuários", href: "/usuarios" },
 ];
 
-// Contabilidade só tem endpoints liberados no back (RN-16) para financeiro-lancamentos
-// (lançar boleto/nota e confirmar pagamento) — o único módulo com painel próprio pra esse
-// perfil, por ora.
-const MODULOS_CONTABILIDADE: ModuloNav[] = [{ label: "Financeiro", href: "/financeiro-lancamentos" }];
+// Contabilidade lança boleto/nota e confirma pagamento em Financeiro (RN-16) — os demais
+// itens são leitura (o back já libera GET sem exigir isolamento por empresa pra esse papel).
+const MODULOS_CONTABILIDADE: ModuloNav[] = [
+  { label: "Financeiro", href: "/financeiro-lancamentos" },
+  { label: "Empresas", href: "/empresas" },
+  { label: "Contratos", href: "/contratos" },
+  { label: "Planos de afiliação", href: "/planos-afiliacao" },
+];
+
+// Empresa afiliada só enxerga os próprios dados (RN-33, isolamento por empresa_id aplicado
+// no back) — nenhum item aqui tem ação de criar/editar/aprovar, são as mesmas telas das
+// outras personas com o conteúdo restrito pelo próprio componente de página.
+const MODULOS_EMPRESA_AFILIADA: ModuloNav[] = [
+  { label: "Minha Empresa", href: "/minha-empresa" },
+  { label: "Financeiro", href: "/financeiro-lancamentos" },
+  { label: "Meus Contratos", href: "/contratos" },
+  { label: "Documentos", href: "/documentos" },
+  { label: "Reservas de Espaço", href: "/reservas-espaco" },
+  { label: "Benefícios de Exposição", href: "/beneficios-exposicao" },
+];
 
 function NavItem({ modulo }: { modulo: ModuloNav }) {
   const pathname = usePathname();
@@ -79,11 +95,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [carregando, usuario, router]);
 
-  // Contabilidade só tem painel de Financeiro — qualquer outra rota (ex.: o redirect padrão
-  // de login para /empresas) manda de volta pra lá.
+  // Cada papel só navega dentro do próprio menu — fora dele (ex.: o redirect padrão de
+  // login para /empresas, pra quem não é equipe_programa) manda de volta pro primeiro item.
   useEffect(() => {
-    if (usuario?.papel === "contabilidade" && !pathname.startsWith("/financeiro-lancamentos")) {
+    if (
+      usuario?.papel === "contabilidade" &&
+      !MODULOS_CONTABILIDADE.some((modulo) => modulo.href && pathname.startsWith(modulo.href))
+    ) {
       router.replace("/financeiro-lancamentos");
+    }
+    if (
+      usuario?.papel === "empresa_afiliada" &&
+      !MODULOS_EMPRESA_AFILIADA.some((modulo) => modulo.href && pathname.startsWith(modulo.href))
+    ) {
+      router.replace("/minha-empresa");
     }
   }, [usuario, pathname, router]);
 
@@ -95,8 +120,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // Empresa afiliada ainda não tem painel próprio construído.
-  if (usuario.papel !== "equipe_programa" && usuario.papel !== "contabilidade") {
+  // Papel desconhecido (fora dos 3 previstos no model) — placeholder defensivo, não deve
+  // acontecer hoje já que equipe_programa/contabilidade/empresa_afiliada têm painel próprio.
+  if (
+    usuario.papel !== "equipe_programa" &&
+    usuario.papel !== "contabilidade" &&
+    usuario.papel !== "empresa_afiliada"
+  ) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
         <p className="font-display text-lg font-semibold text-foreground">
@@ -143,7 +173,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-col gap-1.5">
-          {(usuario.papel === "contabilidade" ? MODULOS_CONTABILIDADE : MODULOS_EQUIPE_PROGRAMA).map((modulo) => (
+          {(usuario.papel === "contabilidade"
+            ? MODULOS_CONTABILIDADE
+            : usuario.papel === "empresa_afiliada"
+              ? MODULOS_EMPRESA_AFILIADA
+              : MODULOS_EQUIPE_PROGRAMA
+          ).map((modulo) => (
             <NavItem key={modulo.label} modulo={modulo} />
           ))}
         </nav>
