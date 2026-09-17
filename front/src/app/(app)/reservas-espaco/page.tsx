@@ -7,6 +7,7 @@ import { ErrorText, Field, Input, PrimaryButton, Select, SecondaryButton, TextAr
 import { formatarData } from "@/lib/format";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useApiResource } from "@/lib/useApiResource";
+import { useAuth } from "@/lib/auth";
 
 interface ReservaEspaco {
   id: number;
@@ -54,11 +55,15 @@ function LinhaReserva({
   nomeEmpresa,
   token,
   onSalvo,
+  podeGerenciar,
+  ehEmpresaAfiliada,
 }: {
   reserva: ReservaEspaco;
   nomeEmpresa: (id: string) => string;
   token: string | null;
   onSalvo: () => void;
+  podeGerenciar: boolean;
+  ehEmpresaAfiliada: boolean;
 }) {
   const [salvando, setSalvando] = useState(false);
 
@@ -76,7 +81,9 @@ function LinhaReserva({
 
   return (
     <tr className="border-b border-secondary-subtle-border last:border-0">
-      <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(reserva.empresa_id)}</td>
+      {!ehEmpresaAfiliada && (
+        <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(reserva.empresa_id)}</td>
+      )}
       <td className="px-4 py-3 text-foreground">
         {TIPOS_ESPACO.find((t) => t.valor === reserva.tipo_espaco)?.rotulo ?? reserva.tipo_espaco}
       </td>
@@ -84,28 +91,34 @@ function LinhaReserva({
       <td className="px-4 py-3">
         <Badge variante={STATUS_VARIANTE[reserva.status]}>{reserva.status.replace(/_/g, " ")}</Badge>
       </td>
-      <td className="px-4 py-3 text-right">
-        <Select
-          value={reserva.status}
-          disabled={salvando}
-          onChange={(e) => mudarStatus(e.target.value)}
-          className="w-auto text-xs"
-        >
-          {STATUS_OPCOES.map((s) => (
-            <option key={s} value={s}>
-              {s.replace(/_/g, " ")}
-            </option>
-          ))}
-        </Select>
-      </td>
+      {podeGerenciar && (
+        <td className="px-4 py-3 text-right">
+          <Select
+            value={reserva.status}
+            disabled={salvando}
+            onChange={(e) => mudarStatus(e.target.value)}
+            className="w-auto text-xs"
+          >
+            {STATUS_OPCOES.map((s) => (
+              <option key={s} value={s}>
+                {s.replace(/_/g, " ")}
+              </option>
+            ))}
+          </Select>
+        </td>
+      )}
     </tr>
   );
 }
 
 export default function ReservasEspacoPage() {
+  const { usuario } = useAuth();
+  const podeGerenciar = usuario?.papel === "equipe_programa";
+  const ehEmpresaAfiliada = usuario?.papel === "empresa_afiliada";
+
   const { dados: reservas, erro, recarregar, token } = useApiResource<ReservaEspaco[]>("/reservas-espaco");
   const { dados: espacos } = useApiResource<EspacoFisico[]>("/espacos-fisicos");
-  const { dados: empresas } = useApiResource<Empresa[]>("/empresas");
+  const { dados: empresas } = useApiResource<Empresa[]>(ehEmpresaAfiliada ? null : "/empresas");
 
   const [formAberto, setFormAberto] = useState(false);
   const [campos, setCampos] = useState(CAMPOS_INICIAIS);
@@ -133,7 +146,7 @@ export default function ReservasEspacoPage() {
         method: "POST",
         token,
         body: {
-          empresa_id: campos.empresa_id,
+          empresa_id: ehEmpresaAfiliada ? undefined : campos.empresa_id,
           tipo_espaco: campos.tipo_espaco,
           data_reserva: campos.data_reserva || undefined,
           observacoes: campos.observacoes || undefined,
@@ -164,21 +177,23 @@ export default function ReservasEspacoPage() {
       {formAberto && (
         <form onSubmit={handleSubmit} className="mb-6 rounded-brand border border-neutral-100 p-5">
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Empresa" htmlFor="empresa_id">
-              <Select
-                id="empresa_id"
-                required
-                value={campos.empresa_id}
-                onChange={(e) => atualizarCampo("empresa_id", e.target.value)}
-              >
-                <option value="">Selecione…</option>
-                {(empresas ?? []).map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresa.nome_fantasia || empresa.razao_social}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {!ehEmpresaAfiliada && (
+              <Field label="Empresa" htmlFor="empresa_id">
+                <Select
+                  id="empresa_id"
+                  required
+                  value={campos.empresa_id}
+                  onChange={(e) => atualizarCampo("empresa_id", e.target.value)}
+                >
+                  <option value="">Selecione…</option>
+                  {(empresas ?? []).map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.nome_fantasia || empresa.razao_social}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
             <Field label="Tipo de espaço" htmlFor="tipo_espaco">
               <Select
                 id="tipo_espaco"
@@ -233,11 +248,11 @@ export default function ReservasEspacoPage() {
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Empresa</th>
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
                 <th className="px-4 py-3 font-bold">Tipo</th>
                 <th className="px-4 py-3 font-bold">Data</th>
                 <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold">Mudar status</th>
+                {podeGerenciar && <th className="px-4 py-3 font-bold">Mudar status</th>}
               </tr>
             </thead>
             <tbody>
@@ -248,6 +263,8 @@ export default function ReservasEspacoPage() {
                   nomeEmpresa={nomeEmpresa}
                   token={token}
                   onSalvo={recarregar}
+                  podeGerenciar={podeGerenciar}
+                  ehEmpresaAfiliada={ehEmpresaAfiliada}
                 />
               ))}
             </tbody>
@@ -256,14 +273,14 @@ export default function ReservasEspacoPage() {
       )}
 
       <h2 className="mt-10 mb-3 font-display text-lg font-semibold text-foreground">
-        Espaços físicos (conceito legado)
+        Espaços físicos
       </h2>
       {espacos && espacos.length > 0 && (
         <div className="overflow-x-auto rounded-brand border border-secondary-subtle-border bg-neutral-100">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
               <tr className="border-b border-secondary-subtle-border bg-[#66B95D] text-white">
-                <th className="px-4 py-3 font-bold">Empresa</th>
+                {!ehEmpresaAfiliada && <th className="px-4 py-3 font-bold">Empresa</th>}
                 <th className="px-4 py-3 font-bold">Sala</th>
                 <th className="px-4 py-3 font-bold">Bloco</th>
                 <th className="px-4 py-3 font-bold">Status</th>
@@ -272,7 +289,9 @@ export default function ReservasEspacoPage() {
             <tbody>
               {espacos.map((espaco) => (
                 <tr key={espaco.id} className="border-b border-secondary-subtle-border last:border-0">
-                  <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(espaco.empresa_id)}</td>
+                  {!ehEmpresaAfiliada && (
+                    <td className="px-4 py-3 font-medium text-foreground">{nomeEmpresa(espaco.empresa_id)}</td>
+                  )}
                   <td className="px-4 py-3 text-foreground">{espaco.identificador_sala}</td>
                   <td className="px-4 py-3 text-foreground">{espaco.bloco ?? "—"}</td>
                   <td className="px-4 py-3">
